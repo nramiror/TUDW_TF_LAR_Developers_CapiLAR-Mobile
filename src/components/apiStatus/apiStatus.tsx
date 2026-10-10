@@ -7,7 +7,7 @@ import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 type Estado = 'probando' | 'ok' | 'error';
 
 // Tarjeta de desarrollo: muestra si el celular llega al backend (GET /).
-// Sirve para verificar la IP del .env antes de probar login y turnos. Se saca cuando haya login (PWA-185).
+// Sirve para verificar la IP del .env. Solo se muestra en desarrollo (__DEV__), no en el APK.
 export const ApiStatus = () => {
   const [estado, setEstado] = useState<Estado>('probando');
   const [detalle, setDetalle] = useState('');

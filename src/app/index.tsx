@@ -1,15 +1,24 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ApiStatus } from '@/components/apiStatus/apiStatus';
 import { Button } from '@/components/button/button';
+import { Loader } from '@/components/loader/loader';
 import { Logo } from '@/components/logo/logo';
 import { Screen } from '@/components/screen/screen';
+import { homeForRole } from '@/context/auth/homeForRole';
+import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, spacing } from '@/theme';
 
-// Pantalla de bienvenida. Cuando esté el login (PWA-185), si hay sesión guardada se redirige
-// directo al panel según el rol y esta pantalla solo la ve quien no inició sesión.
+// Bienvenida. Si hay una sesión guardada, va directo al inicio de su rol (auto-login)
 export default function Bienvenida() {
+  const { user, isCheckingSession } = useAuth();
+
+  if (isCheckingSession) return <Loader />;
+
+  const home = user ? homeForRole(user.rol) : null;
+  if (home) return <Redirect href={home} />;
+
   return (
     <Screen style={styles.container}>
       <View style={styles.hero}>
@@ -24,7 +33,8 @@ export default function Bienvenida() {
         </Button>
       </View>
 
-      <ApiStatus />
+      {/* Solo en desarrollo: chequea que el celu llegue al back (no aparece en el APK) */}
+      {__DEV__ && <ApiStatus />}
     </Screen>
   );
 }
