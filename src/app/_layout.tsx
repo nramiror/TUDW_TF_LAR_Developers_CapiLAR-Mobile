@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { AuthProvider } from '@/context/auth/authProvider';
 import { colors, fontAssets, fonts } from '@/theme';
 
 // El splash (logo sobre blanco) queda visible hasta que cargan las tipografías
@@ -20,7 +21,7 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <>
+    <AuthProvider>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -36,6 +37,6 @@ export default function RootLayout() {
         <Stack.Screen name="cliente" />
         <Stack.Screen name="profesional" />
       </Stack>
-    </>
+    </AuthProvider>
   );
 }

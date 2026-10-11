@@ -1,11 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 
+import { Loader } from '@/components/loader/loader';
+import { useAuth } from '@/context/auth/useAuth';
 import { tabScreenOptions } from '@/theme/navigation';
 
 // App del CLIENTE: servicios para reservar, sus turnos y su perfil.
-// Cuando esté el login (PWA-185) acá se valida que haya sesión con rol CLIENTE.
+// Solo entra un usuario logueado con rol CLIENTE; si no hay sesión (o se cerró), vuelve a la bienvenida
 export default function ClienteLayout() {
+  const { user, isCheckingSession } = useAuth();
+  if (isCheckingSession) return <Loader />;
+  if (user?.rol !== 'CLIENTE') return <Redirect href="/" />;
+
   return (
     <Tabs screenOptions={tabScreenOptions}>
       <Tabs.Screen
