@@ -74,9 +74,15 @@ The backend does not need CORS changes: native apps don't send an `Origin` heade
 npm start
 ```
 
-Scan the QR code with **Expo Go**. The welcome screen shows a card that tells you whether the phone can reach the backend.
+Scan the QR code with **Expo Go**. In development, the welcome screen shows a card that tells you whether the phone can reach the backend.
 
 If the phone can't reach your computer (university or public Wi-Fi), use `npx expo start --tunnel`.
+
+### Test accounts
+
+- **Client:** create it from the app with *Crear cuenta* (public sign-up always creates a CLIENTE).
+- **Professional:** sign up a client and ask an admin to change the role from the web (*Usuarios*), or with `PATCH /users/:id/rol` in Swagger (`http://localhost:3000/api`).
+- **Admin:** the account from the backend seed. Admins use the web app; the mobile app shows a message and doesn't let them in.
 
 ### Checks
 
