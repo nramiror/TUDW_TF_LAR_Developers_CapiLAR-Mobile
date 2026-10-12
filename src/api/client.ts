@@ -17,29 +17,35 @@ interface RequestOptions {
   body?: unknown;
   // JWT del usuario logueado
   token?: string | null;
+  // Para subir archivos (fotos) más grandes que un JSON
+  timeoutMs?: number;
 }
 
 // Si el back no contesta en este tiempo, se corta (en el celular un fetch colgado no avisa nada)
 const TIMEOUT_MS = 10000;
 
 // Wrapper de fetch: arma la URL, manda y recibe JSON y convierte los errores del backend en ApiError
-export const apiFetch = async <T>(path: string, { method = 'GET', body, token }: RequestOptions = {}): Promise<T> => {
+// Con FormData (fotos) se manda tal cual: fetch arma solo el Content-Type multipart con su boundary
+export const apiFetch = async <T>(path: string, { method = 'GET', body, token, timeoutMs = TIMEOUT_MS }: RequestOptions = {}): Promise<T> => {
+  const isFormData = body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    // Puede no ser la red (por ejemplo, un body que fetch no sabe mandar): en desarrollo queda el error real en la terminal de Expo
+    if (__DEV__) console.warn(`apiFetch ${method} ${path}:`, error);
     throw new ApiError('No se pudo conectar con el servidor. Revisá tu conexión y probá de nuevo.', 0);
   } finally {
     clearTimeout(timeout);
