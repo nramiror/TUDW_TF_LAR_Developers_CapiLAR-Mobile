@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import type { Usuario } from '@/api/auth';
 import { Button } from '@/components/button/button';
@@ -27,9 +27,14 @@ const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value:
   </View>
 );
 
+interface ProfileViewProps {
+  // Secciones propias del rol, entre los datos y cerrar sesión (ej. "Mis servicios" del profesional)
+  children?: ReactNode;
+}
+
 // Perfil del usuario logueado (cliente o profesional) con cerrar sesión.
 // La edición de datos y la foto de perfil se suman más adelante (PATCH /users/me)
-export const ProfileView = () => {
+export const ProfileView = ({ children }: ProfileViewProps) => {
   const { user, logout } = useAuth();
   if (!user) return null;
 
@@ -64,6 +69,8 @@ export const ProfileView = () => {
           <DataRow icon="id-card-outline" label="Legajo" value={String(user.profesional.legajo)} />
         )}
       </View>
+
+      {children}
 
       <Button variant="grey" onPress={confirmLogout}>
         Cerrar sesión
