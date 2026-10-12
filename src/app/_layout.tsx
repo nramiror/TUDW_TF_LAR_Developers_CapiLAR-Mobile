@@ -36,6 +36,8 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="cliente" />
         <Stack.Screen name="profesional" />
+        {/* Desde "Mi perfil" de los dos roles, con flecha para volver */}
+        <Stack.Screen name="editar-perfil" options={{ headerShown: true, title: 'Editar mis datos' }} />
       </Stack>
     </AuthProvider>
   );

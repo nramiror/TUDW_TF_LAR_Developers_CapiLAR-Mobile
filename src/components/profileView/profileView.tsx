@@ -1,13 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
 import type { Usuario } from '@/api/auth';
+import { ApiError } from '@/api/client';
+import { deleteAccountRequest } from '@/api/users';
 import { Button } from '@/components/button/button';
+import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors, fonts, fontSizes, gradient, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { isoToFecha } from '@/utils/validation';
 
 const ROL_LABEL: Record<Usuario['rol'], string> = {
   CLIENTE: 'Cliente',
@@ -32,13 +37,11 @@ interface ProfileViewProps {
   children?: ReactNode;
 }
 
-// Perfil del usuario logueado (cliente o profesional) con cerrar sesión.
-// La edición de datos y la foto de perfil se suman más adelante (PATCH /users/me)
+// Perfil del usuario logueado (cliente o profesional): foto, datos, editar, cerrar sesión y darse de baja
 export const ProfileView = ({ children }: ProfileViewProps) => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
   if (!user) return null;
-
-  const initials = `${user.nombre[0] ?? ''}${user.apellido[0] ?? ''}`.toUpperCase();
 
   const confirmLogout = () =>
     Alert.alert('Cerrar sesión', '¿Querés cerrar sesión en este celular?', [
@@ -47,12 +50,40 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
       { text: 'Cerrar sesión', style: 'destructive', onPress: () => logout() },
     ]);
 
+  const deleteAccount = async () => {
+    if (!token) return;
+    setIsDeleting(true);
+    try {
+      await deleteAccountRequest(token);
+      // El token ya no sirve: se cierra la sesión y el layout del rol vuelve a la bienvenida
+      await logout();
+    } catch (err) {
+      setIsDeleting(false);
+      Alert.alert('No se pudo dar de baja', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+    }
+  };
+
+  // Doble confirmación: es una acción que el usuario no puede deshacer desde la app
+  const confirmDelete = () =>
+    Alert.alert('Darme de baja', 'Tu cuenta se va a desactivar y no vas a poder volver a entrar con ella.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Continuar',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('¿Estás seguro?', 'Para volver a usar CapiLAR vas a tener que comunicarte con el salón.', [
+            { text: 'No, volver', style: 'cancel' },
+            { text: 'Sí, darme de baja', style: 'destructive', onPress: deleteAccount },
+          ]),
+      },
+    ]);
+
   return (
     <Screen scroll edges={[]}>
       <View style={styles.header}>
-        <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.avatar}>
-          <Text style={styles.initials}>{initials}</Text>
-        </LinearGradient>
+        <View style={styles.photo}>
+          <ProfilePhoto />
+        </View>
         <Text style={styles.name}>
           {user.nombre} {user.apellido}
         </Text>
@@ -62,6 +93,7 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
       <View style={styles.card}>
         <DataRow icon="mail-outline" label="Correo" value={user.email} />
         <DataRow icon="call-outline" label="Teléfono" value={user.telefono || '—'} />
+        {user.fechaNacimiento && <DataRow icon="gift-outline" label="Fecha de nacimiento" value={isoToFecha(user.fechaNacimiento)} />}
         {user.rol === 'CLIENTE' && (
           <DataRow icon="medkit-outline" label="Alergias o sensibilidades" value={user.cliente?.alergia || 'Ninguna cargada'} />
         )}
@@ -70,11 +102,19 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
         )}
       </View>
 
+      <Button variant="secundario" onPress={() => router.push('/editar-perfil')}>
+        Editar mis datos
+      </Button>
+
       {children}
 
-      <Button variant="grey" onPress={confirmLogout}>
+      <Button variant="grey" onPress={confirmLogout} disabled={isDeleting}>
         Cerrar sesión
       </Button>
+
+      <Pressable onPress={confirmDelete} disabled={isDeleting} hitSlop={8} accessibilityRole="button" style={styles.delete}>
+        <Text style={styles.deleteText}>{isDeleting ? 'Dando de baja…' : 'Darme de baja'}</Text>
+      </Pressable>
     </Screen>
   );
 };
@@ -85,18 +125,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.md,
   },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
+  photo: {
     marginBottom: spacing.sm,
-  },
-  initials: {
-    fontFamily: fonts.title,
-    fontSize: fontSizes.xxl,
-    color: colors.white,
   },
   name: {
     fontFamily: fonts.title,
@@ -132,5 +162,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
     color: colors.black,
+  },
+  delete: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  deleteText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.error,
   },
 });
