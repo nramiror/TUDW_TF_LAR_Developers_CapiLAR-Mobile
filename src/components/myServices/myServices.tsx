@@ -3,7 +3,7 @@ import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native'
 
 import { ApiError } from '@/api/client';
 import { addMyServiceRequest, getMyServicesRequest, removeMyServiceRequest } from '@/api/professionals';
-import { formatDuration, formatPrice, getServicesRequest } from '@/api/services';
+import { formatPrice, formatServiceDuration, getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -90,7 +90,7 @@ export const MyServices = () => {
               <View style={styles.rowText}>
                 <Text style={styles.name}>{servicio.tipo}</Text>
                 <Text style={styles.detail}>
-                  {formatDuration(servicio.tiempoDuracion)} · {formatPrice(servicio.precio)}
+                  {formatServiceDuration(servicio.tiempoDuracion)} · {formatPrice(servicio.precio)}
                 </Text>
               </View>
               <Switch
