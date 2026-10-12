@@ -31,6 +31,17 @@ export const getProfessionalsRequest = (servicioId?: number) =>
 export const getProfessionalServicesRequest = (token: string, legajo: number) =>
   apiFetch<Servicio[]>(`/profesionales/${legajo}/servicios`, { token });
 
+// Servicios del profesional logueado: los elige él del catálogo (el ADMIN ya no se los asigna)
+export const getMyServicesRequest = (token: string) => apiFetch<Servicio[]>('/profesionales/me/servicios', { token });
+
+// 409 si ya lo tenía
+export const addMyServiceRequest = (token: string, servicioId: number) =>
+  apiFetch<Servicio>('/profesionales/me/servicios', { method: 'POST', body: { servicioId }, token });
+
+// Los turnos ya reservados con ese servicio se mantienen
+export const removeMyServiceRequest = (token: string, servicioId: number) =>
+  apiFetch<{ message: string }>(`/profesionales/me/servicios/${servicioId}`, { method: 'DELETE', token });
+
 // Horarios entre dos fechas (incluidas, de a 31 días como máximo), por fecha y hora
 export const getAvailabilityRequest = (token: string, legajo: number, desde: string, hasta: string) =>
   apiFetch<Disponibilidad[]>(`/profesionales/${legajo}/disponibilidad?${new URLSearchParams({ desde, hasta })}`, { token });
