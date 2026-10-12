@@ -38,6 +38,8 @@ export default function RootLayout() {
         <Stack.Screen name="profesional" />
         {/* Desde "Mi perfil" de los dos roles, con flecha para volver */}
         <Stack.Screen name="editar-perfil" options={{ headerShown: true, title: 'Editar mis datos' }} />
+        {/* Desde el catálogo del cliente: profesional, día, horario y confirmación */}
+        <Stack.Screen name="reservar/[servicioId]" options={{ headerShown: true, title: 'Reservar turno' }} />
       </Stack>
     </AuthProvider>
   );

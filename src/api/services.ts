@@ -6,6 +6,8 @@ export interface Servicio {
   id: number;
   tipo: string;
   descripcion?: string | null;
+  // Nombre del archivo de la foto (null si no tiene); la imagen es pública en GET /servicios/:id/foto
+  foto?: string | null;
   // Minutos
   tiempoDuracion: number;
   // El back lo manda como texto con 2 decimales
