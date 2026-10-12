@@ -27,8 +27,14 @@ export const formatDuration = (minutes: number) => {
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
 };
 
-// Duración de un servicio: "80 min mínimo". Es lo mínimo que lleva; según el cabello puede durar más
-export const formatServiceDuration = (minutes: number) => `${minutes} min mínimo`;
+// Duración de un servicio: "50 min mínimo", "1h mínimo", "1h y 30 min mínimo".
+// Es lo mínimo que lleva; según el cabello puede durar más
+export const formatServiceDuration = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const time = !hours ? `${rest} min` : rest ? `${hours}h y ${rest} min` : `${hours}h`;
+  return `${time} mínimo`;
+};
 
 // "$ 15.000" o "$ 15.000,50"
 export const formatPrice = (precio: string | number) =>
