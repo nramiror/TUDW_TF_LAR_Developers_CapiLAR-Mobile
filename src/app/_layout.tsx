@@ -42,6 +42,8 @@ export default function RootLayout() {
         <Stack.Screen name="reservar/[servicioId]" options={{ headerShown: true, title: 'Reservar turno' }} />
         {/* Desde la agenda del profesional: otro día y horario para un turno */}
         <Stack.Screen name="reprogramar/[turnoId]" options={{ headerShown: true, title: 'Reprogramar turno' }} />
+        {/* Desde la agenda del profesional: turno a nombre de un cliente (nace confirmado) */}
+        <Stack.Screen name="nuevo-turno" options={{ headerShown: true, title: 'Nuevo turno' }} />
       </Stack>
     </AuthProvider>
   );

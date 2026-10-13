@@ -27,7 +27,6 @@ type Params = {
   turnoId: string;
   fecha: string;
   horaInicio: string;
-  clienteId: string;
   cliente: string;
   servicios: string;
   items: string;
@@ -38,7 +37,6 @@ type Params = {
 export default function Reprogramar() {
   const params = useLocalSearchParams<Params>();
   const turnoId = Number(params.turnoId);
-  const clienteId = Number(params.clienteId);
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
 
@@ -78,15 +76,15 @@ export default function Reprogramar() {
     };
   }, [token, legajo, params.fecha]);
 
-  // Horarios libres ese día para los mismos servicios: sin contar el horario actual del turno
-  // y descartando los que el cliente ya tiene ocupados con otro turno
+  // Horarios libres ese día para los mismos servicios, sin contar el horario actual del turno.
+  // Con turnoId el back ya descarta los que el cliente tiene ocupados (no acepta además clienteId)
   useEffect(() => {
     if (!token || !fecha || items.length === 0) return;
     let cancelled = false;
     setHora(null);
     setHorarios([]);
     setIsLoadingHorarios(true);
-    getHorariosLibresRequest(token, fecha, items, { clienteId, turnoId })
+    getHorariosLibresRequest(token, fecha, items, { turnoId })
       .then((result) => {
         if (cancelled) return;
         // El mismo horario que ya tiene no es una propuesta nueva
@@ -97,7 +95,7 @@ export default function Reprogramar() {
     return () => {
       cancelled = true;
     };
-  }, [token, fecha, items, clienteId, turnoId, params.fecha, params.horaInicio, horariosVersion]);
+  }, [token, fecha, items, turnoId, params.fecha, params.horaInicio, horariosVersion]);
 
   if (!user || !token) return <Redirect href="/" />;
 
