@@ -73,7 +73,7 @@ export const MAX_DIAS_AGENDA = 31;
 // Endpoints de turnos. El back valida el rol en cada uno.
 
 // clienteId: el salón carga un turno para un cliente (descarta los horarios en que ese cliente ya tiene otro turno).
-// turnoId: al reprogramar, el horario actual de ese turno no cuenta como ocupado.
+// turnoId: al reprogramar, el horario actual de ese turno no cuenta como ocupado. Va uno u otro, no los dos.
 export interface HorariosLibresOptions {
   clienteId?: number;
   turnoId?: number;

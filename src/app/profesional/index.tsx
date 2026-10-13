@@ -161,7 +161,6 @@ export default function Agenda() {
         turnoId: String(turno.id),
         fecha: turno.fecha,
         horaInicio: turno.horaInicio,
-        clienteId: String(turno.cliente.id),
         cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
         servicios: turno.detalles.map((detalle) => detalle.servicio).join(', '),
         items: JSON.stringify(turno.detalles.map(({ servicioId, legajo: legajoDetalle }) => ({ servicioId, legajo: legajoDetalle }))),
