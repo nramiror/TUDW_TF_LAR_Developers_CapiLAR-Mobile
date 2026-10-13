@@ -89,9 +89,16 @@ export const createTurnoRequest = (token: string, data: CreateTurnoData) =>
 // Turnos del cliente logueado, del más nuevo al más viejo
 export const getMyTurnosRequest = (token: string) => apiFetch<Turno[]>('/turnos/mios', { token });
 
-// Turnos del profesional logueado entre dos fechas (incluidas), ordenados por fecha y hora
-export const getAgendaRequest = (token: string, desde: string, hasta: string) =>
-  apiFetch<Turno[]>(`/turnos/agenda?${new URLSearchParams({ desde, hasta })}`, { token });
+// Turnos de un profesional entre dos fechas (incluidas, de a 31 días), ordenados por fecha y hora.
+// Hay que mandar el legajo: sin él, el back devuelve los turnos de todo el salón
+export const getAgendaRequest = (token: string, legajo: number, desde: string, hasta: string) =>
+  apiFetch<Turno[]>(`/turnos/agenda?${new URLSearchParams({ desde, hasta, legajo: String(legajo) })}`, { token });
+
+// Solicitudes que esperan respuesta, de hoy a 60 días (lo que se puede reservar), de la más cercana a la más lejana
+export const getPendientesRequest = async (token: string, legajo: number) => {
+  const parts = await Promise.all(upcomingRanges().map(([desde, hasta]) => getAgendaRequest(token, legajo, desde, hasta)));
+  return parts.flat().filter((turno) => turno.estado === 'PENDIENTE' && !yaTermino(turno));
+};
 
 export const acceptTurnoRequest = (token: string, id: number) =>
   apiFetch<Turno>(`/turnos/${id}/aceptar`, { method: 'PATCH', token });
@@ -131,6 +138,15 @@ export const addDays = (date: Date, days: number) => {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
+};
+
+// De hoy a 60 días en dos tramos de hasta 31 (lo máximo que acepta el back por consulta)
+export const upcomingRanges = () => {
+  const today = new Date();
+  return [0, MAX_DIAS_AGENDA].map((offset) => [
+    toIsoDate(addDays(today, offset)),
+    toIsoDate(addDays(today, Math.min(offset + MAX_DIAS_AGENDA - 1, MAX_DIAS_ANTICIPACION))),
+  ]);
 };
 
 // "2026-10-07" -> "martes 7 de octubre"

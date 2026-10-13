@@ -44,7 +44,7 @@ const validate = (values: FormValues): FieldErrors => {
   else if (!EMAIL_REGEX.test(values.email.trim())) errors.email = 'Ingresá un correo válido';
 
   if (!values.telefono) errors.telefono = 'Ingresá tu teléfono';
-  else if (!PHONE_REGEX.test(values.telefono)) errors.telefono = 'Ingresá entre 8 y 15 números, sin espacios';
+  else if (!PHONE_REGEX.test(values.telefono)) errors.telefono = 'Ingresá entre 10 y 13 números, sin espacios';
 
   const passwordError = validatePassword(values.contrasena);
   if (passwordError) errors.contrasena = passwordError;

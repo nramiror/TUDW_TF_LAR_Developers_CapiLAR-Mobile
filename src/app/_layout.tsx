@@ -40,6 +40,8 @@ export default function RootLayout() {
         <Stack.Screen name="editar-perfil" options={{ headerShown: true, title: 'Editar mis datos' }} />
         {/* Desde el catálogo del cliente: profesional, día, horario y confirmación */}
         <Stack.Screen name="reservar/[servicioId]" options={{ headerShown: true, title: 'Reservar turno' }} />
+        {/* Desde la agenda del profesional: otro día y horario para un turno */}
+        <Stack.Screen name="reprogramar/[turnoId]" options={{ headerShown: true, title: 'Reprogramar turno' }} />
       </Stack>
     </AuthProvider>
   );
