@@ -47,7 +47,8 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 type MotivoPedido = { tipo: 'rechazar' | 'cancelar'; turno: Turno };
 
 // F03/F07: agenda del profesional. Arriba, las solicitudes pendientes (aceptar o rechazar);
-// abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar)
+// abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar).
+// "Nuevo turno" carga un turno a nombre de un cliente
 export default function Agenda() {
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
@@ -216,6 +217,7 @@ export default function Agenda() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
       >
         <Greeting subtitle="Esta es tu agenda" />
+        <Button onPress={() => router.push('/nuevo-turno')}>Nuevo turno para un cliente</Button>
 
         {error !== '' && (
           <View style={styles.gap}>
