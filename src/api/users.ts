@@ -45,3 +45,17 @@ export const userPhoto = (user: Usuario) => user.cliente?.foto ?? user.profesion
 
 // URL de la foto (requiere token). Lleva el nombre del archivo para que la imagen en caché se renueve al cambiarla
 export const userPhotoPath = (user: Usuario) => `/users/${user.id}/foto?v=${encodeURIComponent(userPhoto(user) ?? '')}`;
+
+// Cliente tal como lo devuelve la búsqueda del profesional (para cargarle un turno)
+export interface ClienteResumen {
+  id: number;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string | null;
+  cliente: { alergia: string | null } | null;
+}
+
+// Solo PROFESIONAL: clientes activos por nombre, apellido o email, ordenados por apellido
+export const searchClientesRequest = (token: string, search: string) =>
+  apiFetch<ClienteResumen[]>(`/users/clientes?${new URLSearchParams({ search })}`, { token });
