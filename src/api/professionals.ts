@@ -1,9 +1,9 @@
 import { apiFetch } from './client';
 import type { Servicio } from './services';
-import { MAX_DIAS_ANTICIPACION, addDays, toIsoDate } from './turnos';
+import { upcomingRanges } from './turnos';
 
-// Profesionales, sus servicios y sus horarios: lo que necesita el cliente para reservar.
-// La carga de horarios del profesional se suma cuando se haga su agenda en mobile.
+// Profesionales, sus servicios y sus horarios: lo que necesita el cliente para reservar
+// y lo que el profesional gestiona de su agenda (días y horarios de trabajo).
 
 export interface ProfesionalResumen {
   legajo: number;
@@ -20,8 +20,8 @@ export interface Disponibilidad {
   horarioFin: string;
 }
 
-// Los horarios se consultan de a 31 días
-export const MAX_DIAS_CONSULTA = 31;
+// Una jornada no puede superar las 12 horas (sumando los horarios del día)
+export const MAX_HORAS_JORNADA = 12;
 
 // Público: con servicioId, solo los que hacen ese servicio
 export const getProfessionalsRequest = (servicioId?: number) =>
@@ -46,16 +46,29 @@ export const removeMyServiceRequest = (token: string, servicioId: number) =>
 export const getAvailabilityRequest = (token: string, legajo: number, desde: string, hasta: string) =>
   apiFetch<Disponibilidad[]>(`/profesionales/${legajo}/disponibilidad?${new URLSearchParams({ desde, hasta })}`, { token });
 
-// Fechas con horario cargado de hoy a 60 días (lo que se puede reservar), en dos pedidos de hasta 31 días
-export const getUpcomingWorkDatesRequest = async (token: string, legajo: number) => {
-  const today = new Date();
-  const ranges = [0, MAX_DIAS_CONSULTA].map((offset) => [
-    toIsoDate(addDays(today, offset)),
-    toIsoDate(addDays(today, Math.min(offset + MAX_DIAS_CONSULTA - 1, MAX_DIAS_ANTICIPACION))),
-  ]);
-  const parts = await Promise.all(ranges.map(([desde, hasta]) => getAvailabilityRequest(token, legajo, desde, hasta)));
-  return [...new Set(parts.flat().map((horario) => horario.fecha))];
+// Horarios cargados de hoy a 60 días (lo que se puede reservar), en dos pedidos de hasta 31 días
+export const getUpcomingAvailabilityRequest = async (token: string, legajo: number) => {
+  const parts = await Promise.all(upcomingRanges().map(([desde, hasta]) => getAvailabilityRequest(token, legajo, desde, hasta)));
+  return parts.flat();
 };
+
+// Fechas con horario cargado de hoy a 60 días
+export const getUpcomingWorkDatesRequest = async (token: string, legajo: number) => {
+  const horarios = await getUpcomingAvailabilityRequest(token, legajo);
+  return [...new Set(horarios.map((horario) => horario.fecha))];
+};
+
+// El mismo horario en varias fechas (hasta 31; se guardan todas o ninguna). 409 si se superpone con otro horario de alguna de esas fechas
+export const createAvailabilityRequest = (token: string, legajo: number, fechas: string[], horarioInicio: string, horarioFin: string) =>
+  apiFetch<Disponibilidad[]>(`/profesionales/${legajo}/disponibilidad`, {
+    method: 'POST',
+    body: { fechas, horarioInicio, horarioFin },
+    token,
+  });
+
+// 409 si hay turnos reservados dentro de ese horario
+export const deleteAvailabilityRequest = (token: string, legajo: number, id: number) =>
+  apiFetch<{ message: string }>(`/profesionales/${legajo}/disponibilidad/${id}`, { method: 'DELETE', token });
 
 // URL de la foto de un profesional (requiere token), para usar con expo-image y el header Authorization
 export const professionalPhotoPath = (legajo: number) => `/profesionales/${legajo}/foto`;
