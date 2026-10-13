@@ -38,7 +38,7 @@ const validate = (values: FormValues): FieldErrors => {
   if (!values.nombre.trim()) errors.nombre = 'Ingresá tu nombre';
   if (!values.apellido.trim()) errors.apellido = 'Ingresá tu apellido';
   if (!values.telefono) errors.telefono = 'Ingresá tu teléfono';
-  else if (!PHONE_REGEX.test(values.telefono)) errors.telefono = 'Ingresá entre 8 y 15 números, sin espacios';
+  else if (!PHONE_REGEX.test(values.telefono)) errors.telefono = 'Ingresá entre 10 y 13 números, sin espacios';
   const fechaError = validateFechaNacimiento(values.fechaNacimiento);
   if (fechaError) errors.fechaNacimiento = fechaError;
   return errors;

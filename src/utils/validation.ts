@@ -2,8 +2,8 @@
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Solo dígitos, entre 8 y 15 (feedback de los profes: PWA-203 / PWA-207)
-export const PHONE_REGEX = /^\d{8,15}$/;
+// Solo dígitos, entre 10 y 13 como la web (feedback de los profes: PWA-203 / PWA-207)
+export const PHONE_REGEX = /^\d{10,13}$/;
 
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 72;
