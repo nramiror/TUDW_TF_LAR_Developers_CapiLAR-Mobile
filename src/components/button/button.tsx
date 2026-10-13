@@ -63,11 +63,14 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
+  // flexGrow: si el botón se estira (por ejemplo, junto a otro más alto en una fila), el fondo lo acompaña
   gradient: {
+    flexGrow: 1,
     borderRadius: radius.sm,
     padding: 2,
   },
   inner: {
+    flexGrow: 1,
     minHeight: 44,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -85,6 +88,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   text: {
+    textAlign: 'center',
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
   },
