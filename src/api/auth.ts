@@ -21,8 +21,10 @@ export interface Usuario {
   profesional?: { legajo: number; foto?: string | null } | null;
 }
 
+// Con el header X-Client: mobile el refresh token viene en el body (en la web va en una cookie)
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
   user: Usuario;
 }
 
@@ -47,6 +49,13 @@ export const loginRequest = (email: string, contrasena: string) =>
 
 export const registerRequest = (data: RegisterData) =>
   apiFetch<AuthResponse>('/auth/register', { method: 'POST', body: data });
+
+// Rota la sesión: devuelve tokens nuevos y el refresh token usado deja de servir
+export const refreshRequest = (refreshToken: string) =>
+  apiFetch<AuthResponse>('/auth/refresh', { method: 'POST', body: { refreshToken } });
+
+export const logoutRequest = (refreshToken: string) =>
+  apiFetch<MessageResponse>('/auth/logout', { method: 'POST', body: { refreshToken } });
 
 export const meRequest = (token: string) => apiFetch<Usuario>('/auth/me', { token });
 

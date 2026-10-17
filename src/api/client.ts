@@ -24,11 +24,36 @@ interface RequestOptions {
 // Si el back no contesta en este tiempo, se corta (en el celular un fetch colgado no avisa nada)
 const TIMEOUT_MS = 10000;
 
-// Wrapper de fetch: arma la URL, manda y recibe JSON y convierte los errores del backend en ApiError
+// Lo registra el AuthProvider: ante un 401 pide un access token nuevo con el refresh token.
+// Recibe el token que falló y devuelve el nuevo, o null si la sesión venció (hay que volver a entrar)
+type TokenRefresher = (failedToken: string) => Promise<string | null>;
+let tokenRefresher: TokenRefresher | null = null;
+
+export const setTokenRefresher = (refresher: TokenRefresher | null) => {
+  tokenRefresher = refresher;
+};
+
+export const SESSION_EXPIRED_MESSAGE = 'Tu sesión venció. Iniciá sesión de nuevo.';
+
+// Wrapper de fetch: arma la URL, manda y recibe JSON y convierte los errores del backend en ApiError.
+// Si un pedido con token da 401 (el access token dura 15 min), renueva la sesión y lo reintenta una vez
+export const apiFetch = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
+  const { token } = options;
+  try {
+    return await request<T>(path, options);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 401 || !token || !tokenRefresher) throw error;
+    const newToken = await tokenRefresher(token);
+    if (!newToken) throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
+    return request<T>(path, { ...options, token: newToken });
+  }
+};
+
 // Con FormData (fotos) se manda tal cual: fetch arma solo el Content-Type multipart con su boundary
-export const apiFetch = async <T>(path: string, { method = 'GET', body, token, timeoutMs = TIMEOUT_MS }: RequestOptions = {}): Promise<T> => {
+const request = async <T>(path: string, { method = 'GET', body, token, timeoutMs = TIMEOUT_MS }: RequestOptions): Promise<T> => {
   const isFormData = body instanceof FormData;
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  // X-Client: mobile hace que el back mande y reciba el refresh token en el body (la app no usa la cookie httpOnly de la web)
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Client': 'mobile' };
   if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
