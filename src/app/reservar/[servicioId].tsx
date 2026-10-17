@@ -34,8 +34,8 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
   </View>
 );
 
-// F03: reservar un servicio (uno por turno, acordado con el equipo). Se elige profesional, día y horario libre;
-// el turno queda PENDIENTE hasta que el profesional lo confirme
+// F03: reservar un servicio (uno por turno, acordado con el equipo). Se elige profesional, día y horario libre.
+// Nace CONFIRMADO; si el servicio requiere evaluación, queda PENDIENTE hasta que el profesional lo acepte
 export default function ReservarServicio() {
   const { servicioId: rawId } = useLocalSearchParams<{ servicioId: string }>();
   const servicioId = Number(rawId);
@@ -142,10 +142,13 @@ export default function ReservarServicio() {
     setError('');
     setIsBooking(true);
     try {
-      await createTurnoRequest(token, { fecha, horaInicio: hora, items: [{ servicioId, legajo }] });
-      Alert.alert('¡Turno solicitado!', 'Te avisamos por mail cuando el salón lo confirme. Lo podés seguir en "Mis turnos".', [
-        { text: 'Ver mis turnos', onPress: () => router.dismissTo('/cliente/turnos') },
-      ]);
+      const turno = await createTurnoRequest(token, { fecha, horaInicio: hora, items: [{ servicioId, legajo }] });
+      // El estado lo decide el back según el servicio
+      const [title, message] =
+        turno.estado === 'PENDIENTE'
+          ? ['¡Turno solicitado!', 'Te avisamos por mail cuando el salón lo confirme. Lo podés seguir en "Mis turnos".']
+          : ['¡Turno confirmado!', 'Te esperamos. Te mandamos los datos por mail y lo podés ver en "Mis turnos".'];
+      Alert.alert(title, message, [{ text: 'Ver mis turnos', onPress: () => router.dismissTo('/cliente/turnos') }]);
     } catch (err) {
       setError(errorMessage(err));
       // 409: alguien tomó ese horario mientras tanto -> se actualiza la lista
@@ -222,8 +225,10 @@ export default function ReservarServicio() {
           </Text>
           <Text style={styles.summaryText}>Precio de referencia: {formatPrice(servicio.precio)}</Text>
           <Text style={styles.note}>
-            El precio final se define en el salón según tu cabello. Tu turno queda pendiente hasta que el salón lo confirme. Una vez
-            confirmado, podés cancelarlo hasta 12 horas antes.
+            El precio final se define en el salón según tu cabello.{' '}
+            {servicio.requiereEvaluacion
+              ? 'Este servicio requiere evaluación: tu turno queda pendiente hasta que el salón lo confirme. Una vez confirmado, podés cancelarlo hasta 12 horas antes.'
+              : 'Tu turno queda confirmado al reservar. Podés cancelarlo hasta 12 horas antes.'}
           </Text>
         </View>
       )}
@@ -232,7 +237,7 @@ export default function ReservarServicio() {
 
       {hora && (
         <Button onPress={book} isLoading={isBooking}>
-          Confirmar turno
+          {servicio.requiereEvaluacion ? 'Solicitar turno' : 'Confirmar turno'}
         </Button>
       )}
     </Screen>
