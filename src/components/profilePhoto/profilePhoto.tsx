@@ -27,16 +27,28 @@ const showError = (err: unknown) =>
 
 // Foto de perfil (o las iniciales sobre el degradado si no tiene). Al tocarla: sacar foto, elegir de la galería o quitarla
 export const ProfilePhoto = () => {
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, renewToken } = useAuth();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Si la imagen no carga (por ejemplo, sin conexión) se muestran las iniciales
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  // Token con el que ya se reintentó: si falla de nuevo no es la sesión, y así no se renueva en bucle
+  const [retriedToken, setRetriedToken] = useState<string | null>(null);
   if (!user || !token) return null;
 
   const photo = userPhoto(user);
   const showPhoto = photo !== null && photo !== failedPhoto;
   const initials = `${user.nombre[0] ?? ''}${user.apellido[0] ?? ''}`.toUpperCase();
+
+  // La imagen se pide sin apiFetch: si el access token venció (15 min) se renueva una vez y se vuelve a pedir con el nuevo
+  const handlePhotoError = async () => {
+    if (retriedToken !== token) {
+      setRetriedToken(token);
+      const newToken = await renewToken(token).catch(() => null);
+      if (newToken && newToken !== token) return;
+    }
+    setFailedPhoto(photo);
+  };
 
   const save = async (request: () => ReturnType<typeof deletePhotoRequest>) => {
     setIsSaving(true);
@@ -95,7 +107,7 @@ export const ProfilePhoto = () => {
             style={styles.avatar}
             contentFit="cover"
             transition={150}
-            onError={() => setFailedPhoto(photo)}
+            onError={handlePhotoError}
           />
         ) : (
           <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={[styles.avatar, styles.center]}>
