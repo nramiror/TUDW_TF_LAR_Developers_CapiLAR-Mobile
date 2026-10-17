@@ -37,11 +37,11 @@ export const uploadPhotoRequest = (token: string, uri: string) => {
 
 export const deletePhotoRequest = (token: string) => apiFetch<Usuario>('/users/me/foto', { method: 'DELETE', token });
 
-// Borrado lógico: la cuenta no puede volver a entrar y el token deja de servir
 // Manda otro mail con el enlace para verificar el email (400 si ya está verificado)
 export const resendVerificationRequest = (token: string) =>
   apiFetch<{ message: string }>('/users/me/verificar-email', { method: 'POST', token });
 
+// Borrado lógico: la cuenta no puede volver a entrar y el token deja de servir
 export const deleteAccountRequest = (token: string) => apiFetch<{ message: string }>('/users/me', { method: 'DELETE', token });
 
 // Nombre del archivo de la foto del usuario, según su rol (null si no tiene)

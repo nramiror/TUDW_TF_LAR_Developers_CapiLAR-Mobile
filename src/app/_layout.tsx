@@ -45,6 +45,12 @@ export default function RootLayout() {
         <Stack.Screen name="reprogramar/[turnoId]" options={{ headerShown: true, title: 'Reprogramar turno' }} />
         {/* Desde la agenda del profesional: turno a nombre de un cliente (nace confirmado) */}
         <Stack.Screen name="nuevo-turno" options={{ headerShown: true, title: 'Nuevo turno' }} />
+        {/* F08, desde la agenda del profesional: ficha técnica del turno e historial capilar de la clienta */}
+        <Stack.Screen name="ficha/[turnoId]" options={{ headerShown: true, title: 'Ficha técnica' }} />
+        <Stack.Screen name="historial/[clienteId]" options={{ headerShown: true, title: 'Historial capilar' }} />
+        <Stack.Screen name="ficha-detalle/[fichaId]" options={{ headerShown: true, title: 'Ficha técnica' }} />
+        {/* F08, desde el perfil del cliente */}
+        <Stack.Screen name="mis-fichas" options={{ headerShown: true, title: 'Mi historial capilar' }} />
       </Stack>
     </AuthProvider>
   );

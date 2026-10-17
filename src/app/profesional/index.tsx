@@ -163,6 +163,31 @@ export default function Agenda() {
     ]);
   };
 
+  // F08: la ficha es por servicio; se abre la del servicio de este profesional en el turno
+  const fichaTecnica = (turno: Turno) => {
+    const detalle = turno.detalles.find((item) => item.legajo === legajo);
+    if (!detalle) return;
+    router.push({
+      pathname: '/ficha/[turnoId]',
+      params: {
+        turnoId: String(turno.id),
+        detalleId: String(detalle.id),
+        clienteId: String(turno.cliente.id),
+        cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
+        alergia: turno.cliente.alergia ?? '',
+        servicio: detalle.servicio,
+        fecha: turno.fecha,
+        estado: turno.estado,
+      },
+    });
+  };
+
+  const historial = (turno: Turno) =>
+    router.push({
+      pathname: '/historial/[clienteId]',
+      params: { clienteId: String(turno.cliente.id), cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}` },
+    });
+
   const reprogramar = (turno: Turno) =>
     router.push({
       pathname: '/reprogramar/[turnoId]',
@@ -180,6 +205,11 @@ export default function Agenda() {
   const opciones = (turno: Turno): SheetOption[] => {
     const terminado = yaTermino(turno);
     const list: SheetOption[] = [];
+    // Se carga con el turno confirmado; completado, se ve (ya cerrada)
+    if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && turno.detalles.some((item) => item.legajo === legajo)) {
+      list.push({ label: 'Ficha técnica', icon: 'clipboard-outline', onPress: () => fichaTecnica(turno) });
+    }
+    list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
     if (turno.estado === 'PENDIENTE') {
       list.push({ label: 'Aceptar solicitud', icon: 'checkmark-circle-outline', onPress: () => aceptar(turno) });
     }
