@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Alert } from 'react-native';
 
-import { loginRequest, logoutRequest, meRequest, refreshRequest, registerRequest } from '@/api/auth';
+import { changePasswordRequest, loginRequest, logoutRequest, meRequest, refreshRequest, registerRequest } from '@/api/auth';
 import type { AuthResponse, RegisterData, Rol, Usuario } from '@/api/auth';
 import { ApiError, SESSION_EXPIRED_MESSAGE, setTokenRefresher } from '@/api/client';
 
@@ -126,6 +126,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (storedRefresh) logoutRequest(storedRefresh).catch(() => undefined);
   }, [clearSession]);
 
+  const changePassword = useCallback(
+    async (actual: string, nueva: string) => {
+      if (!tokenRef.current) throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
+      await applySession(await changePasswordRequest(tokenRef.current, actual, nueva));
+    },
+    [applySession],
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -136,10 +144,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login,
       register,
       logout,
+      changePassword,
       renewToken,
       updateUser: setUser,
     }),
-    [user, token, isCheckingSession, login, register, logout, renewToken],
+    [user, token, isCheckingSession, login, register, logout, changePassword, renewToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

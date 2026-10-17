@@ -38,6 +38,7 @@ export default function RootLayout() {
         <Stack.Screen name="profesional" />
         {/* Desde "Mi perfil" de los dos roles, con flecha para volver */}
         <Stack.Screen name="editar-perfil" options={{ headerShown: true, title: 'Editar mis datos' }} />
+        <Stack.Screen name="cambiar-contrasena" options={{ headerShown: true, title: 'Cambiar contraseña' }} />
         {/* Desde el catálogo del cliente: profesional, día, horario y confirmación */}
         <Stack.Screen name="reservar/[servicioId]" options={{ headerShown: true, title: 'Reservar turno' }} />
         {/* Desde la agenda del profesional: otro día y horario para un turno */}

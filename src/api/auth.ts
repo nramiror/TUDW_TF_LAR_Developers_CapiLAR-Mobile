@@ -59,6 +59,10 @@ export const refreshRequest = (refreshToken: string) =>
 export const logoutRequest = (refreshToken: string) =>
   apiFetch<MessageResponse>('/auth/logout', { method: 'POST', body: { refreshToken } });
 
+// Devuelve una sesión nueva (como el login) y cierra la de los otros dispositivos. 400 si la actual no es correcta
+export const changePasswordRequest = (token: string, actual: string, nueva: string) =>
+  apiFetch<AuthResponse>('/auth/password', { method: 'PATCH', body: { actual, nueva }, token });
+
 export const meRequest = (token: string) => apiFetch<Usuario>('/auth/me', { token });
 
 // El mail trae un link a la web para elegir la contraseña nueva
