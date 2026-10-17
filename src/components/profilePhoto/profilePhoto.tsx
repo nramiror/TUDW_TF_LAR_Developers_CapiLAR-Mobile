@@ -6,20 +6,20 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { API_URL, ApiError } from '@/api/client';
-import { FOTO_MAX_BYTES, deletePhotoRequest, uploadPhotoRequest, userPhoto, userPhotoPath } from '@/api/users';
+import { deletePhotoRequest, uploadPhotoRequest, userPhoto, userPhotoPath } from '@/api/users';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
 import type { SheetOption } from '@/components/optionsSheet/optionsSheet';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, gradient, radius } from '@/theme';
+import { pickImage } from '@/utils/pickImage';
+import type { ImageSource } from '@/utils/pickImage';
 
 const SIZE = 88;
 
-// Recorte cuadrado y algo de compresión: así la foto queda muy por debajo de los 2 MB que acepta el back
+// Recorte cuadrado (pickImage además la achica para que quede muy por debajo de los 2 MB que acepta el back)
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
-  mediaTypes: ['images'],
   allowsEditing: true,
   aspect: [1, 1],
-  quality: 0.7,
 };
 
 const showError = (err: unknown) =>
@@ -61,24 +61,9 @@ export const ProfilePhoto = () => {
     }
   };
 
-  const pick = async (source: 'camera' | 'library') => {
-    if (source === 'camera') {
-      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Sin permiso de cámara', 'Para sacarte una foto, habilitá la cámara para CapiLAR en los ajustes del celular.');
-        return;
-      }
-    }
-    const result =
-      source === 'camera' ? await ImagePicker.launchCameraAsync(PICKER_OPTIONS) : await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
-    if (result.canceled) return;
-
-    const asset = result.assets[0];
-    if (asset.fileSize && asset.fileSize > FOTO_MAX_BYTES) {
-      Alert.alert('Foto muy pesada', 'Elegí una foto de hasta 2 MB.');
-      return;
-    }
-    await save(() => uploadPhotoRequest(token, asset.uri));
+  const pick = async (source: ImageSource) => {
+    const uri = await pickImage(source, PICKER_OPTIONS);
+    if (uri) await save(() => uploadPhotoRequest(token, uri));
   };
 
   const confirmRemove = () =>
