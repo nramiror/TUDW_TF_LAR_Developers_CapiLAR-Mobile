@@ -3,7 +3,14 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
-import { acceptRescheduleRequest, cancelTurnoRequest, formatFechaLarga, getMyTurnosRequest, yaTermino } from '@/api/turnos';
+import {
+  acceptRescheduleRequest,
+  cancelTurnoRequest,
+  confirmAttendanceRequest,
+  formatFechaLarga,
+  getMyTurnosRequest,
+  yaTermino,
+} from '@/api/turnos';
 import type { Turno } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -24,14 +31,15 @@ const splitTurnos = (turnos: Turno[]) => {
   ].filter((section) => section.data.length > 0);
 };
 
-// F03/F04: turnos del cliente, con cancelar (hasta 12 h antes si está confirmado) y aceptar una reprogramación
+// F03/F04/F06: turnos del cliente, con cancelar (hasta 12 h antes si está confirmado), aceptar una reprogramación
+// y confirmar asistencia (lo mismo que el botón del recordatorio, cuyo link abre la web)
 export default function MisTurnos() {
   const { token } = useAuth();
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
-  // Turno con una acción en curso (cancelar o aceptar)
+  // Turno con una acción en curso (cancelar, aceptar o confirmar asistencia)
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
@@ -90,6 +98,11 @@ export default function MisTurnos() {
     run(turno, () => acceptRescheduleRequest(token, turno.id), 'No se pudo aceptar el horario');
   };
 
+  const confirmAttendance = (turno: Turno) => {
+    if (!token) return;
+    run(turno, () => confirmAttendanceRequest(token, turno.id), 'No se pudo confirmar la asistencia');
+  };
+
   const empty = isLoading ? (
     <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando turnos" />
   ) : error ? (
@@ -116,6 +129,7 @@ export default function MisTurnos() {
             turno={item}
             onCancel={() => confirmCancel(item)}
             onAcceptReschedule={() => acceptReschedule(item)}
+            onConfirmAttendance={() => confirmAttendance(item)}
             isBusy={busyId === item.id}
           />
         )}

@@ -12,6 +12,8 @@ export interface Servicio {
   tiempoDuracion: number;
   // El back lo manda como texto con 2 decimales
   precio: string;
+  // Si es true, la reserva del cliente queda PENDIENTE hasta que un profesional la acepte; si no, nace CONFIRMADA
+  requiereEvaluacion: boolean;
   fechaBaja: string | null;
 }
 

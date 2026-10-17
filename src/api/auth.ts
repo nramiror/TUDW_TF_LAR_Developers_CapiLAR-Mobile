@@ -15,6 +15,8 @@ export interface Usuario {
   rol: Rol;
   fechaAlta: string;
   fechaBaja: string | null;
+  // null: no verificó su email (un cliente sin verificar no puede reservar). Se vuelve null si cambia el email
+  emailVerificadoEn?: string | null;
   // Subtipo según el rol: alergia del cliente, legajo del profesional (null si no lo tiene).
   // foto: nombre del archivo de la foto de perfil (null si no tiene); la imagen se pide a GET /users/:id/foto
   cliente?: { alergia: string | null; foto?: string | null } | null;

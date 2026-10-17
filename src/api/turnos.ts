@@ -1,11 +1,12 @@
 import { apiFetch } from './client';
 
 // Copiado del front (src/api/turnos.ts): mismos tipos, reglas y endpoints de turnos.
-// Si cambia allá (por ejemplo, con el feedback de PWA-206), hay que actualizarlo acá también.
+// Si cambia allá, hay que actualizarlo acá también.
 
-// PENDIENTE: lo pidió el cliente y espera al profesional. REPROGRAMADO: el salón propuso otro horario y espera al cliente.
-// RECHAZADO y CANCELADO liberan el horario.
-export type EstadoTurno = 'PENDIENTE' | 'CONFIRMADO' | 'REPROGRAMADO' | 'COMPLETADO' | 'RECHAZADO' | 'CANCELADO';
+// PENDIENTE: lo pidió el cliente con un servicio que requiere evaluación y espera al profesional (sin evaluación nace CONFIRMADO).
+// REPROGRAMADO: el salón propuso otro horario y espera al cliente. RECHAZADO y CANCELADO liberan el horario.
+// AUSENTE: el cliente no vino a un turno confirmado (lo marca el profesional cuando terminó el horario)
+export type EstadoTurno = 'PENDIENTE' | 'CONFIRMADO' | 'REPROGRAMADO' | 'COMPLETADO' | 'RECHAZADO' | 'CANCELADO' | 'AUSENTE';
 
 export type MetodoPago = 'EFECTIVO' | 'DEBITO' | 'CREDITO' | 'TRANSFERENCIA';
 
@@ -29,6 +30,8 @@ export interface Turno {
   horaInicio: string;
   horaFin: string;
   estado: EstadoTurno;
+  // Cuándo el cliente confirmó que viene (desde la app o el recordatorio); null si no confirmó. Se borra al reprogramar
+  asistenciaConfirmadaEn: string | null;
   metodoPago: MetodoPago | null;
   // Motivo de la cancelación (lo ven las dos partes) o del rechazo (el cliente no lo recibe)
   motivo?: string | null;
@@ -38,6 +41,8 @@ export interface Turno {
     apellido: string;
     telefono: string;
     alergia: string | null;
+    // null: todavía no verificó su email (no puede reservar sola)
+    emailVerificadoEn?: string | null;
   };
   detalles: TurnoDetalle[];
 }
@@ -82,7 +87,8 @@ export interface HorariosLibresOptions {
 export const getHorariosLibresRequest = (token: string, fecha: string, items: TurnoItem[], options: HorariosLibresOptions = {}) =>
   apiFetch<HorariosLibres>('/turnos/horarios-libres', { method: 'POST', body: { fecha, items, ...options }, token });
 
-// CLIENTE: queda PENDIENTE. PROFESIONAL / ADMIN con clienteId: queda CONFIRMADO
+// CLIENTE: nace CONFIRMADO, o PENDIENTE si algún servicio requiere evaluación (403 si no verificó su email).
+// PROFESIONAL / ADMIN con clienteId: queda CONFIRMADO
 export const createTurnoRequest = (token: string, data: CreateTurnoData) =>
   apiFetch<Turno>('/turnos', { method: 'POST', body: data, token });
 
@@ -120,6 +126,14 @@ export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =
 
 export const completeTurnoRequest = (token: string, id: number) =>
   apiFetch<Turno>(`/turnos/${id}/completar`, { method: 'PATCH', token });
+
+// CLIENTE: confirma que viene a un turno CONFIRMADO que no empezó (confirmar dos veces no da error)
+export const confirmAttendanceRequest = (token: string, id: number) =>
+  apiFetch<Turno>(`/turnos/${id}/confirmar-asistencia`, { method: 'PATCH', token });
+
+// PROFESIONAL: el cliente no vino (CONFIRMADO -> AUSENTE), desde la hora de fin del turno
+export const markAbsentRequest = (token: string, id: number) =>
+  apiFetch<Turno>(`/turnos/${id}/ausente`, { method: 'PATCH', token });
 
 // --- Fechas: viajan como "YYYY-MM-DD" y "HH:mm" locales, así no hay corrimientos por zona horaria ---
 
@@ -176,6 +190,10 @@ export const clientePuedeCancelar = (turno: Turno) => {
   if (faltan <= 0) return false;
   return turno.estado !== 'CONFIRMADO' || faltan >= HORAS_CANCELACION_CLIENTE * 60;
 };
+
+// Mismo criterio que el back: solo un CONFIRMADO que todavía no empezó
+export const clientePuedeConfirmarAsistencia = (turno: Turno) =>
+  turno.estado === 'CONFIRMADO' && !turno.asistenciaConfirmadaEn && minutosHastaInicio(turno) > 0;
 
 // Lunes de la semana de `date`
 export const startOfWeek = (date: Date) => {
