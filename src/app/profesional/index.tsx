@@ -15,6 +15,7 @@ import {
   formatWeek,
   getAgendaRequest,
   getPendientesRequest,
+  markAbsentRequest,
   minutosHastaInicio,
   rejectTurnoRequest,
   startOfWeek,
@@ -47,7 +48,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 type MotivoPedido = { tipo: 'rechazar' | 'cancelar'; turno: Turno };
 
 // F03/F07: agenda del profesional. Arriba, las solicitudes pendientes (aceptar o rechazar);
-// abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar).
+// abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar, marcar ausente).
 // "Nuevo turno" carga un turno a nombre de un cliente
 export default function Agenda() {
   const { user, token } = useAuth();
@@ -155,6 +156,13 @@ export default function Agenda() {
     ]);
   };
 
+  const marcarAusente = (turno: Turno) => {
+    Alert.alert('Marcar ausente', `¿${turno.cliente.nombre} ${turno.cliente.apellido} no vino al turno?`, [
+      { text: 'No', style: 'cancel' },
+      { text: 'Sí, no vino', style: 'destructive', onPress: () => run(turno, () => markAbsentRequest(token, turno.id), 'No se pudo marcar') },
+    ]);
+  };
+
   const reprogramar = (turno: Turno) =>
     router.push({
       pathname: '/reprogramar/[turnoId]',
@@ -177,6 +185,10 @@ export default function Agenda() {
     }
     if (turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) <= 0) {
       list.push({ label: 'Marcar como completado', icon: 'checkmark-done-outline', onPress: () => completar(turno) });
+    }
+    // Desde la hora de fin, igual que el back
+    if (turno.estado === 'CONFIRMADO' && terminado) {
+      list.push({ label: 'Marcar ausente', icon: 'person-remove-outline', destructive: true, onPress: () => marcarAusente(turno) });
     }
     if (ACTIVOS.includes(turno.estado) && !terminado) {
       list.push({

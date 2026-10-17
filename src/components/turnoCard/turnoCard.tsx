@@ -1,6 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { clientePuedeCancelar, formatFechaLarga, yaTermino } from '@/api/turnos';
+import { clientePuedeCancelar, clientePuedeConfirmarAsistencia, formatFechaLarga, yaTermino } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -13,6 +14,7 @@ const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'No se pudo confirmar', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
+  AUSENTE: { label: 'No asististe', color: colors.error },
 };
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -21,14 +23,17 @@ interface TurnoCardProps {
   turno: Turno;
   onCancel?: () => void;
   onAcceptReschedule?: () => void;
-  // Mientras se cancela o se acepta, los botones de esta tarjeta esperan
+  onConfirmAttendance?: () => void;
+  // Mientras se cancela, se acepta o se confirma, los botones de esta tarjeta esperan
   isBusy?: boolean;
 }
 
 // Turno del cliente en "Mis turnos", con las acciones que permite su estado (mismas reglas que el back)
-export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false }: TurnoCardProps) => {
+export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, onConfirmAttendance, isBusy = false }: TurnoCardProps) => {
   const estado = ESTADO[turno.estado];
   const puedeCancelar = clientePuedeCancelar(turno);
+  const puedeConfirmar = clientePuedeConfirmarAsistencia(turno);
+  const asistenciaConfirmada = turno.estado === 'CONFIRMADO' && turno.asistenciaConfirmadaEn !== null && !yaTermino(turno);
   // Confirmado, todavía no empezó, pero faltan menos de 12 h: solo el salón lo puede cancelar
   const fueraDePlazo = turno.estado === 'CONFIRMADO' && !puedeCancelar && !yaTermino(turno);
 
@@ -52,7 +57,19 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false 
       {turno.estado === 'REPROGRAMADO' && (
         <Text style={styles.note}>El salón te propuso este horario. Si te queda bien, aceptalo; si no, podés cancelarlo.</Text>
       )}
+      {asistenciaConfirmada && (
+        <View style={styles.confirmed}>
+          <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+          <Text style={styles.confirmedText}>Confirmaste tu asistencia</Text>
+        </View>
+      )}
       {fueraDePlazo && <Text style={styles.note}>Faltan menos de 12 horas: para cancelarlo, comunicate con el salón.</Text>}
+
+      {puedeConfirmar && onConfirmAttendance && (
+        <Button onPress={onConfirmAttendance} isLoading={isBusy}>
+          Confirmar asistencia
+        </Button>
+      )}
 
       {turno.estado === 'REPROGRAMADO' && onAcceptReschedule && (
         <Button onPress={onAcceptReschedule} isLoading={isBusy}>
@@ -102,6 +119,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.black,
+  },
+  confirmed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  confirmedText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.success,
   },
   note: {
     marginTop: spacing.xs,

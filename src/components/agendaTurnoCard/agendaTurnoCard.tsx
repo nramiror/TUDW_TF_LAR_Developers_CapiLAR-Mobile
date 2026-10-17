@@ -14,6 +14,7 @@ const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'Rechazado', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
+  AUSENTE: { label: 'Ausente', color: colors.error },
 };
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -46,6 +47,19 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
       <Text style={styles.client}>
         {turno.cliente.nombre} {turno.cliente.apellido}
       </Text>
+      {turno.estado === 'CONFIRMADO' && turno.asistenciaConfirmadaEn ? (
+        <View style={styles.row}>
+          <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+          <Text style={[styles.detail, styles.confirmed]}>Confirmó que viene</Text>
+        </View>
+      ) : null}
+      {/* Sin verificar no puede reservar sola: conviene pedirle que revise su mail */}
+      {turno.cliente.emailVerificadoEn === null ? (
+        <View style={styles.row}>
+          <Ionicons name="mail-unread-outline" size={16} color={colors.warning} />
+          <Text style={[styles.detail, styles.unverified]}>Email sin verificar</Text>
+        </View>
+      ) : null}
       <View style={styles.row}>
         <Ionicons name="call-outline" size={16} color={colors.grey} />
         <Text style={styles.detail}>{turno.cliente.telefono}</Text>
@@ -130,6 +144,13 @@ const styles = StyleSheet.create({
   alergia: {
     fontFamily: fonts.bodySemiBold,
     color: colors.error,
+  },
+  confirmed: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.success,
+  },
+  unverified: {
+    color: colors.warning,
   },
   note: {
     marginTop: spacing.xs,
