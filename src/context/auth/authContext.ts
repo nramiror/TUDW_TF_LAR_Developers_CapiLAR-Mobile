@@ -12,6 +12,8 @@ export interface AuthContextValue {
   login: (email: string, contrasena: string) => Promise<Usuario>;
   register: (data: RegisterData) => Promise<Usuario>;
   logout: () => Promise<void>;
+  // Para lo que no pasa por apiFetch (imágenes con token): pide un access token nuevo si el que falló venció
+  renewToken: (failedToken: string) => Promise<string | null>;
   updateUser: (user: Usuario) => void;
 }
 
