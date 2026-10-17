@@ -108,6 +108,9 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
       <Button variant="secundario" onPress={() => router.push('/editar-perfil')}>
         Editar mis datos
       </Button>
+      <Button variant="secundario" onPress={() => router.push('/cambiar-contrasena')}>
+        Cambiar contraseña
+      </Button>
 
       {children}
 
