@@ -8,6 +8,7 @@ import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
 import { Button } from '@/components/button/button';
+import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
@@ -89,6 +90,8 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
         </Text>
         <Text style={styles.role}>{ROL_LABEL[user.rol]}</Text>
       </View>
+
+      <EmailVerification />
 
       <View style={styles.card}>
         <DataRow icon="mail-outline" label="Correo" value={user.email} />
