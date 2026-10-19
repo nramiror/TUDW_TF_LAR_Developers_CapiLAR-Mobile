@@ -14,14 +14,16 @@ interface ReasonModalProps {
   // Qué pasa con el motivo (quién lo ve)
   description: string;
   confirmLabel: string;
+  // El motivo se puede dejar vacío (por ejemplo, al suspender una serie)
+  optional?: boolean;
   isLoading?: boolean;
   onConfirm: (motivo: string) => void;
   onClose: () => void;
 }
 
-// Pide un motivo obligatorio antes de una acción (rechazar o cancelar un turno).
+// Pide un motivo antes de una acción (rechazar o cancelar un turno: obligatorio; suspender una serie: opcional).
 // En Android, Alert no tiene campo de texto: por eso un modal propio
-export const ReasonModal = ({ visible, title, description, confirmLabel, isLoading = false, onConfirm, onClose }: ReasonModalProps) => {
+export const ReasonModal = ({ visible, title, description, confirmLabel, optional = false, isLoading = false, onConfirm, onClose }: ReasonModalProps) => {
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
 
@@ -35,7 +37,7 @@ export const ReasonModal = ({ visible, title, description, confirmLabel, isLoadi
 
   const confirm = () => {
     const value = motivo.trim();
-    if (!value) return setError('Contanos el motivo');
+    if (!value && !optional) return setError('Contanos el motivo');
     if (value.length > MAX_MOTIVO) return setError(`Máximo ${MAX_MOTIVO} caracteres`);
     onConfirm(value);
   };
@@ -48,7 +50,7 @@ export const ReasonModal = ({ visible, title, description, confirmLabel, isLoadi
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
           <TextField
-            label="Motivo"
+            label={optional ? 'Motivo (opcional)' : 'Motivo'}
             value={motivo}
             onChangeText={(text) => {
               setMotivo(text);
