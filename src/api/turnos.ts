@@ -127,10 +127,6 @@ export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =
 export const completeTurnoRequest = (token: string, id: number) =>
   apiFetch<Turno>(`/turnos/${id}/completar`, { method: 'PATCH', token });
 
-// CLIENTE: confirma que viene a un turno CONFIRMADO que no empezó (confirmar dos veces no da error)
-export const confirmAttendanceRequest = (token: string, id: number) =>
-  apiFetch<Turno>(`/turnos/${id}/confirmar-asistencia`, { method: 'PATCH', token });
-
 // PROFESIONAL: el cliente no vino (CONFIRMADO -> AUSENTE), desde la hora de fin del turno
 export const markAbsentRequest = (token: string, id: number) =>
   apiFetch<Turno>(`/turnos/${id}/ausente`, { method: 'PATCH', token });
@@ -190,10 +186,6 @@ export const clientePuedeCancelar = (turno: Turno) => {
   if (faltan <= 0) return false;
   return turno.estado !== 'CONFIRMADO' || faltan >= HORAS_CANCELACION_CLIENTE * 60;
 };
-
-// Mismo criterio que el back: solo un CONFIRMADO que todavía no empezó
-export const clientePuedeConfirmarAsistencia = (turno: Turno) =>
-  turno.estado === 'CONFIRMADO' && !turno.asistenciaConfirmadaEn && minutosHastaInicio(turno) > 0;
 
 // Lunes de la semana de `date`
 export const startOfWeek = (date: Date) => {
