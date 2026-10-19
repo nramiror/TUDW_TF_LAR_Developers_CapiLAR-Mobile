@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { clientePuedeCancelar, clientePuedeConfirmarAsistencia, formatFechaLarga, yaTermino } from '@/api/turnos';
+import { clientePuedeCancelar, formatFechaLarga, yaTermino } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -23,16 +23,15 @@ interface TurnoCardProps {
   turno: Turno;
   onCancel?: () => void;
   onAcceptReschedule?: () => void;
-  onConfirmAttendance?: () => void;
-  // Mientras se cancela, se acepta o se confirma, los botones de esta tarjeta esperan
+  // Mientras se cancela o se acepta, los botones de esta tarjeta esperan
   isBusy?: boolean;
 }
 
 // Turno del cliente en "Mis turnos", con las acciones que permite su estado (mismas reglas que el back)
-export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, onConfirmAttendance, isBusy = false }: TurnoCardProps) => {
+export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false }: TurnoCardProps) => {
   const estado = ESTADO[turno.estado];
   const puedeCancelar = clientePuedeCancelar(turno);
-  const puedeConfirmar = clientePuedeConfirmarAsistencia(turno);
+  // Confirmar asistencia es solo un link opcional del recordatorio; si lo usó, se muestra
   const asistenciaConfirmada = turno.estado === 'CONFIRMADO' && turno.asistenciaConfirmadaEn !== null && !yaTermino(turno);
   // Confirmado, todavía no empezó, pero faltan menos de 12 h: solo el salón lo puede cancelar
   const fueraDePlazo = turno.estado === 'CONFIRMADO' && !puedeCancelar && !yaTermino(turno);
@@ -64,12 +63,6 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, onConfirmAttend
         </View>
       )}
       {fueraDePlazo && <Text style={styles.note}>Faltan menos de 12 horas: para cancelarlo, comunicate con el salón.</Text>}
-
-      {puedeConfirmar && onConfirmAttendance && (
-        <Button onPress={onConfirmAttendance} isLoading={isBusy}>
-          Confirmar asistencia
-        </Button>
-      )}
 
       {turno.estado === 'REPROGRAMADO' && onAcceptReschedule && (
         <Button onPress={onAcceptReschedule} isLoading={isBusy}>

@@ -13,6 +13,9 @@ export interface SheetOption {
   onPress: () => void;
   // Acción que borra algo: en rojo
   destructive?: boolean;
+  // Se ve en gris y no se toca; `hint` explica desde cuándo se puede usar
+  disabled?: boolean;
+  hint?: string;
 }
 
 interface OptionsSheetProps {
@@ -33,19 +36,26 @@ export const OptionsSheet = ({ visible, title, options, onClose }: OptionsSheetP
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
         {title && <Text style={styles.title}>{title}</Text>}
         {options.map((option) => {
-          const color = option.destructive ? colors.error : colors.black;
+          const color = option.disabled ? colors.grey : option.destructive ? colors.error : colors.black;
+          const iconColor = option.disabled ? colors.grey : option.destructive ? colors.error : colors.violet;
           return (
             <Pressable
               key={option.label}
               style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+              disabled={option.disabled}
               onPress={() => {
                 onClose();
                 option.onPress();
               }}
               accessibilityRole="button"
+              accessibilityState={{ disabled: option.disabled }}
+              accessibilityHint={option.hint}
             >
-              <Ionicons name={option.icon} size={22} color={option.destructive ? colors.error : colors.violet} />
-              <Text style={[styles.label, { color }]}>{option.label}</Text>
+              <Ionicons name={option.icon} size={22} color={iconColor} />
+              <View style={styles.texts}>
+                <Text style={[styles.label, { color }]}>{option.label}</Text>
+                {option.hint && <Text style={styles.hint}>{option.hint}</Text>}
+              </View>
             </Pressable>
           );
         })}
@@ -87,9 +97,18 @@ const styles = StyleSheet.create({
   pressed: {
     backgroundColor: colors.surface,
   },
+  texts: {
+    flex: 1,
+    paddingVertical: spacing.xs,
+  },
   label: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
   },
   cancel: {
     justifyContent: 'center',

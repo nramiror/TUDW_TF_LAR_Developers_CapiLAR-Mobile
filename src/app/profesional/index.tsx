@@ -172,7 +172,8 @@ export default function Agenda() {
       params: {
         turnoId: String(turno.id),
         detalleId: String(detalle.id),
-        clienteId: String(turno.cliente.id),
+        // Vacío si todavía no tiene ficha (la agenda se recarga al volver, así llega la recién creada)
+        fichaId: detalle.fichaId ? String(detalle.fichaId) : '',
         cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
         alergia: turno.cliente.alergia ?? '',
         servicio: detalle.servicio,
@@ -205,9 +206,16 @@ export default function Agenda() {
   const opciones = (turno: Turno): SheetOption[] => {
     const terminado = yaTermino(turno);
     const list: SheetOption[] = [];
-    // Se carga con el turno confirmado; completado, se ve (ya cerrada)
+    // Se carga con el turno confirmado desde que empieza (registra lo que se hizo); completado, se ve (ya cerrada)
     if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && turno.detalles.some((item) => item.legajo === legajo)) {
-      list.push({ label: 'Ficha técnica', icon: 'clipboard-outline', onPress: () => fichaTecnica(turno) });
+      const noEmpezo = turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) > 0;
+      list.push({
+        label: 'Ficha técnica',
+        icon: 'clipboard-outline',
+        disabled: noEmpezo,
+        hint: noEmpezo ? `Se carga desde que empieza el turno (${turno.horaInicio} h)` : undefined,
+        onPress: () => fichaTecnica(turno),
+      });
     }
     list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
     if (turno.estado === 'PENDIENTE') {

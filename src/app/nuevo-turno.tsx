@@ -177,7 +177,7 @@ export default function NuevoTurno() {
           <>
             <TextField
               label="Buscar cliente"
-              placeholder="Nombre, apellido o email"
+              placeholder="Nombre, apellido, email o teléfono"
               value={busqueda}
               onChangeText={setBusqueda}
               autoCapitalize="none"

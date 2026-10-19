@@ -14,7 +14,7 @@ import {
   VOLUMEN_LABEL,
   createFichaRequest,
   deleteFichaPhotoRequest,
-  getFichasClienteRequest,
+  getFichaRequest,
   updateFichaRequest,
   uploadFichaPhotoRequest,
 } from '@/api/fichas';
@@ -200,7 +200,8 @@ export default function FichaTecnica() {
   const params = useLocalSearchParams<{
     turnoId: string;
     detalleId: string;
-    clienteId: string;
+    // Vacío si el servicio todavía no tiene ficha
+    fichaId: string;
     cliente: string;
     alergia?: string;
     servicio: string;
@@ -209,7 +210,7 @@ export default function FichaTecnica() {
   }>();
   const turnoId = Number(params.turnoId);
   const detalleId = Number(params.detalleId);
-  const clienteId = Number(params.clienteId);
+  const fichaId = params.fichaId ? Number(params.fichaId) : null;
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
 
@@ -221,14 +222,13 @@ export default function FichaTecnica() {
   const [isSaving, setIsSaving] = useState(false);
   const [busyTipo, setBusyTipo] = useState<MomentoFoto | null>(null);
 
-  // El turno no trae el id de su ficha: se busca en el historial de la clienta
+  // Cada servicio del turno trae el id de su ficha: sin ficha, el formulario arranca vacío
   const load = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     setLoadError('');
     try {
-      const fichas = await getFichasClienteRequest(token, clienteId);
-      const existente = fichas.find((item) => item.turnoDetalleId === detalleId) ?? null;
+      const existente = fichaId ? await getFichaRequest(token, fichaId) : null;
       setFicha(existente);
       setForm(toForm(existente));
     } catch (err) {
@@ -236,7 +236,7 @@ export default function FichaTecnica() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, clienteId, detalleId]);
+  }, [token, fichaId]);
 
   useEffect(() => {
     load();
