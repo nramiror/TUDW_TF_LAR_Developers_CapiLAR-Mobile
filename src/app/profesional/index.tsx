@@ -206,9 +206,16 @@ export default function Agenda() {
   const opciones = (turno: Turno): SheetOption[] => {
     const terminado = yaTermino(turno);
     const list: SheetOption[] = [];
-    // Se carga con el turno confirmado; completado, se ve (ya cerrada)
+    // Se carga con el turno confirmado desde que empieza (registra lo que se hizo); completado, se ve (ya cerrada)
     if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && turno.detalles.some((item) => item.legajo === legajo)) {
-      list.push({ label: 'Ficha técnica', icon: 'clipboard-outline', onPress: () => fichaTecnica(turno) });
+      const noEmpezo = turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) > 0;
+      list.push({
+        label: 'Ficha técnica',
+        icon: 'clipboard-outline',
+        disabled: noEmpezo,
+        hint: noEmpezo ? `Se carga desde que empieza el turno (${turno.horaInicio} h)` : undefined,
+        onPress: () => fichaTecnica(turno),
+      });
     }
     list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
     if (turno.estado === 'PENDIENTE') {
