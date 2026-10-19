@@ -172,7 +172,8 @@ export default function Agenda() {
       params: {
         turnoId: String(turno.id),
         detalleId: String(detalle.id),
-        clienteId: String(turno.cliente.id),
+        // Vacío si todavía no tiene ficha (la agenda se recarga al volver, así llega la recién creada)
+        fichaId: detalle.fichaId ? String(detalle.fichaId) : '',
         cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
         alergia: turno.cliente.alergia ?? '',
         servicio: detalle.servicio,

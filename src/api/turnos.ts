@@ -21,6 +21,8 @@ export interface TurnoDetalle {
   horaFin: string;
   // Precio al reservar, como texto ("15000.00")
   precioBase: string;
+  // F08: ficha técnica de este servicio (null si no tiene). Solo en los turnos del salón, no en /turnos/mios
+  fichaId?: number | null;
 }
 
 export interface Turno {
