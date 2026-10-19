@@ -69,6 +69,8 @@ export interface CreateTurnoData {
   items: TurnoItem[];
   // Solo PROFESIONAL o ADMIN, al cargar un turno a nombre de un cliente (nace CONFIRMADO)
   clienteId?: number;
+  // Solo CLIENTE (F05): otro horario para una fecha de su serie que estaba ocupada (nace CONFIRMADO)
+  serieId?: number;
 }
 
 // Reglas del salón (las mismas que valida el back)

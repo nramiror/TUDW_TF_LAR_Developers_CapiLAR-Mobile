@@ -51,6 +51,11 @@ export default function RootLayout() {
         <Stack.Screen name="ficha-detalle/[fichaId]" options={{ headerShown: true, title: 'Ficha técnica' }} />
         {/* F08, desde el perfil del cliente */}
         <Stack.Screen name="mis-fichas" options={{ headerShown: true, title: 'Mi historial capilar' }} />
+        {/* F05: el profesional crea la serie desde un turno de la agenda y las gestiona; la clienta las ve desde su perfil */}
+        <Stack.Screen name="serie-nueva" options={{ headerShown: true, title: 'Crear serie' }} />
+        <Stack.Screen name="series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
+        <Stack.Screen name="mis-series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
+        <Stack.Screen name="serie-reservar" options={{ headerShown: true, title: 'Elegir otro horario' }} />
       </Stack>
     </AuthProvider>
   );
