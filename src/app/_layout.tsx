@@ -54,6 +54,8 @@ export default function RootLayout() {
         {/* F05: el profesional crea la serie desde un turno de la agenda y las gestiona; la clienta las ve desde su perfil */}
         <Stack.Screen name="serie-nueva" options={{ headerShown: true, title: 'Crear serie' }} />
         <Stack.Screen name="series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
+        <Stack.Screen name="mis-series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
+        <Stack.Screen name="serie-reservar" options={{ headerShown: true, title: 'Elegir otro horario' }} />
       </Stack>
     </AuthProvider>
   );
