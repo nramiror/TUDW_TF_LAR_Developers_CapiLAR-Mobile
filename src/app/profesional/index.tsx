@@ -49,7 +49,7 @@ type MotivoPedido = { tipo: 'rechazar' | 'cancelar'; turno: Turno };
 
 // F03/F07: agenda del profesional. Arriba, las solicitudes pendientes (aceptar o rechazar);
 // abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar, marcar ausente).
-// "Nuevo turno" carga un turno a nombre de un cliente
+// "Nuevo turno" carga un turno a nombre de un cliente; desde un turno confirmado se crea una serie (F05)
 export default function Agenda() {
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
@@ -183,6 +183,23 @@ export default function Agenda() {
     });
   };
 
+  // F05: repetir el servicio de este profesional en el turno, cada tantos días
+  const crearSerie = (turno: Turno) => {
+    const detalle = turno.detalles.find((item) => item.legajo === legajo);
+    if (!detalle) return;
+    router.push({
+      pathname: '/serie-nueva',
+      params: {
+        turnoId: String(turno.id),
+        detalleId: String(detalle.id),
+        cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
+        servicio: detalle.servicio,
+        fecha: turno.fecha,
+        horaInicio: detalle.horaInicio,
+      },
+    });
+  };
+
   const historial = (turno: Turno) =>
     router.push({
       pathname: '/historial/[clienteId]',
@@ -218,6 +235,10 @@ export default function Agenda() {
       });
     }
     list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
+    // Las series salen de un turno confirmado (el back avisa si ya es parte de una)
+    if (turno.estado === 'CONFIRMADO' && turno.detalles.some((item) => item.legajo === legajo)) {
+      list.push({ label: 'Crear serie', icon: 'repeat-outline', onPress: () => crearSerie(turno) });
+    }
     if (turno.estado === 'PENDIENTE') {
       list.push({ label: 'Aceptar solicitud', icon: 'checkmark-circle-outline', onPress: () => aceptar(turno) });
     }
@@ -268,6 +289,9 @@ export default function Agenda() {
       >
         <Greeting subtitle="Esta es tu agenda" />
         <Button onPress={() => router.push('/nuevo-turno')}>Nuevo turno para un cliente</Button>
+        <Button variant="secundario" onPress={() => router.push('/series')}>
+          Mis series de turnos
+        </Button>
 
         {error !== '' && (
           <View style={styles.gap}>
