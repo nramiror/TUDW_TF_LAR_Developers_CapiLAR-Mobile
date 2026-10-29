@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client';
 import { createTurnoRequest, formatFechaLarga, getHorariosLibresRequest } from '@/api/turnos';
 import type { TurnoItem } from '@/api/turnos';
 import { Button } from '@/components/button/button';
-import { Chip } from '@/components/chip/chip';
+import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
@@ -106,11 +106,7 @@ export default function SerieReservar() {
         ) : horarios.length === 0 ? (
           <Text style={styles.hint}>No quedan horarios libres ese día. Podés pedir otro turno desde Reservar.</Text>
         ) : (
-          <View style={styles.wrap}>
-            {horarios.map((item) => (
-              <Chip key={item} label={item} selected={item === hora} onPress={() => setHora(item)} />
-            ))}
-          </View>
+          <HorarioGrid horarios={horarios} selected={hora} onSelect={setHora} />
         )}
       </View>
 
@@ -160,11 +156,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.grey,
     lineHeight: 20,
-  },
-  wrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
   },
   loading: {
     alignSelf: 'flex-start',
