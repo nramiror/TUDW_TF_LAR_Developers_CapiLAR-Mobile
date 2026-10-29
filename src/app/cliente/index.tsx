@@ -1,6 +1,8 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { getServicesRequest } from '@/api/services';
@@ -10,9 +12,10 @@ import { FormMessage } from '@/components/formMessage/formMessage';
 import { Greeting } from '@/components/greeting/greeting';
 import { Screen } from '@/components/screen/screen';
 import { ServiceCard } from '@/components/serviceCard/serviceCard';
-import { colors, fonts, fontSizes, spacing } from '@/theme';
+import { colors, fonts, fontSizes, gradient, radius, spacing } from '@/theme';
 
-// F03: catálogo de servicios. Al tocar uno se elige profesional, día y horario (reservar/[servicioId])
+// F03: catálogo de servicios. Al tocar uno se elige profesional, día y horario (reservar/[servicioId]).
+// Arriba, la entrada a "Probá un color" (TP3, YouCam), como en el menú de la web
 export default function Reservar() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +65,21 @@ export default function Reservar() {
         ListHeaderComponent={
           <View style={styles.header}>
             <Greeting subtitle="¿Qué te querés hacer?" />
+            <Pressable
+              onPress={() => router.push('/probar-color')}
+              style={({ pressed }) => pressed && styles.pressed}
+              accessibilityRole="button"
+              accessibilityLabel="Probá un color"
+            >
+              <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.colorCard}>
+                <Ionicons name="color-palette-outline" size={28} color={colors.white} />
+                <View style={styles.colorTexts}>
+                  <Text style={styles.colorTitle}>Probá un color</Text>
+                  <Text style={styles.colorText}>Subí una selfie y mirá cómo te quedaría antes de reservar.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={colors.white} />
+              </LinearGradient>
+            </Pressable>
             <Text style={styles.hint}>Elegí un servicio para ver los días y horarios disponibles.</Text>
           </View>
         }
@@ -89,6 +107,30 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.grey,
+  },
+  colorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+  },
+  colorTexts: {
+    flex: 1,
+    gap: 2,
+  },
+  colorTitle: {
+    fontFamily: fonts.subtitle,
+    fontSize: fontSizes.md,
+    color: colors.white,
+  },
+  colorText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.white,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   separator: {
     height: spacing.sm,
