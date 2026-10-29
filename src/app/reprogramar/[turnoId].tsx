@@ -9,6 +9,7 @@ import { formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, reschedul
 import type { TurnoItem } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
+import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
@@ -159,11 +160,7 @@ export default function Reprogramar() {
           ) : horarios.length === 0 ? (
             <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
           ) : (
-            <View style={styles.wrap}>
-              {horarios.map((item) => (
-                <Chip key={item} label={item} selected={item === hora} onPress={() => setHora(item)} />
-              ))}
-            </View>
+            <HorarioGrid horarios={horarios} selected={hora} onSelect={setHora} />
           )}
         </Section>
       )}
@@ -218,11 +215,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.grey,
-  },
-  wrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
   },
   row: {
     gap: spacing.sm,

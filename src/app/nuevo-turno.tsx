@@ -13,6 +13,7 @@ import { searchClientesRequest } from '@/api/users';
 import type { ClienteResumen } from '@/api/users';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
+import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { TextField } from '@/components/textField/textField';
@@ -245,11 +246,7 @@ export default function NuevoTurno() {
                 ) : horarios.length === 0 ? (
                   <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
                 ) : (
-                  <View style={styles.wrap}>
-                    {horarios.map((item) => (
-                      <Chip key={item} label={item} selected={item === hora} onPress={() => setHora(item)} />
-                    ))}
-                  </View>
+                  <HorarioGrid horarios={horarios} selected={hora} onSelect={setHora} />
                 )}
               </Section>
             )}

@@ -11,6 +11,7 @@ import type { Servicio } from '@/api/services';
 import { createTurnoRequest, formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, toIsoDate } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
+import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Loader } from '@/components/loader/loader';
 import { Screen } from '@/components/screen/screen';
@@ -205,11 +206,7 @@ export default function ReservarServicio() {
           ) : horarios.length === 0 ? (
             <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
           ) : (
-            <View style={styles.wrap}>
-              {horarios.map((item) => (
-                <Chip key={item} label={item} selected={item === hora} onPress={() => setHora(item)} />
-              ))}
-            </View>
+            <HorarioGrid horarios={horarios} selected={hora} onSelect={setHora} />
           )}
         </Section>
       )}
