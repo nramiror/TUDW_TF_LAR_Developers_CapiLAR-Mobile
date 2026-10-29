@@ -41,6 +41,8 @@ export default function RootLayout() {
         <Stack.Screen name="cambiar-contrasena" options={{ headerShown: true, title: 'Cambiar contraseña' }} />
         {/* Desde el catálogo del cliente: profesional, día, horario y confirmación */}
         <Stack.Screen name="reservar/[servicioId]" options={{ headerShown: true, title: 'Reservar turno' }} />
+        {/* TP3 (YouCam), desde el catálogo del cliente: ver un color en una selfie antes de reservar */}
+        <Stack.Screen name="probar-color" options={{ headerShown: true, title: 'Probá un color' }} />
         {/* Desde la agenda del profesional: otro día y horario para un turno */}
         <Stack.Screen name="reprogramar/[turnoId]" options={{ headerShown: true, title: 'Reprogramar turno' }} />
         {/* Desde la agenda del profesional: turno a nombre de un cliente (nace confirmado) */}
