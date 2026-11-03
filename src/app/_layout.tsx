@@ -58,6 +58,10 @@ export default function RootLayout() {
         <Stack.Screen name="series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
         <Stack.Screen name="mis-series" options={{ headerShown: true, title: 'Mis series de turnos' }} />
         <Stack.Screen name="serie-reservar" options={{ headerShown: true, title: 'Elegir otro horario' }} />
+        {/* F11, desde la pestaña Stock del profesional: escanear el QR de un producto, su detalle y registrar un movimiento */}
+        <Stack.Screen name="escanear" options={{ headerShown: true, title: 'Escanear QR' }} />
+        <Stack.Screen name="articulo/[articuloId]" options={{ headerShown: true, title: 'Producto' }} />
+        <Stack.Screen name="movimiento-nuevo" options={{ headerShown: true, title: 'Registrar movimiento' }} />
       </Stack>
     </AuthProvider>
   );

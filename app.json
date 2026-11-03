@@ -36,6 +36,14 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "CapiLAR usa la cámara para leer el código QR de los productos del salón.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
