@@ -1,0 +1,144 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+
+import { ApiError } from '@/api/client';
+import { getServicesRequest } from '@/api/services';
+import type { Servicio } from '@/api/services';
+import { Button } from '@/components/button/button';
+import { FormMessage } from '@/components/formMessage/formMessage';
+import { Greeting } from '@/components/greeting/greeting';
+import { Screen } from '@/components/screen/screen';
+import { ServiceCard } from '@/components/serviceCard/serviceCard';
+import { colors, fonts, fontSizes, gradient, radius, spacing } from '@/theme';
+
+// F03: catálogo de servicios. Al tocar uno se elige profesional, día y horario (reservar/[servicioId]).
+// Arriba, la entrada a "Probá un color" (TP3, YouCam), como en el menú de la web
+export default function Reservar() {
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setError('');
+    try {
+      setServicios(await getServicesRequest());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+    }
+  }, []);
+
+  useEffect(() => {
+    load().finally(() => setIsLoading(false));
+  }, [load]);
+
+  const refresh = async () => {
+    setIsRefreshing(true);
+    await load();
+    setIsRefreshing(false);
+  };
+
+  const empty = isLoading ? (
+    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando servicios" />
+  ) : error ? (
+    <View style={styles.gap}>
+      <FormMessage message={error} />
+      <Button variant="secundario" onPress={refresh}>
+        Reintentar
+      </Button>
+    </View>
+  ) : (
+    <Text style={styles.hint}>Todavía no hay servicios para reservar.</Text>
+  );
+
+  return (
+    <Screen edges={[]} style={styles.screen}>
+      <FlatList
+        data={error ? [] : servicios}
+        keyExtractor={(servicio) => String(servicio.id)}
+        renderItem={({ item }) => (
+          <ServiceCard servicio={item} onPress={() => router.push({ pathname: '/reservar/[servicioId]', params: { servicioId: item.id } })} />
+        )}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Greeting subtitle="¿Qué te querés hacer?" />
+            <Pressable
+              onPress={() => router.push('/probar-color')}
+              style={({ pressed }) => pressed && styles.pressed}
+              accessibilityRole="button"
+              accessibilityLabel="Probá un color"
+            >
+              <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.colorCard}>
+                <Ionicons name="color-palette-outline" size={28} color={colors.white} />
+                <View style={styles.colorTexts}>
+                  <Text style={styles.colorTitle}>Probá un color</Text>
+                  <Text style={styles.colorText}>Subí una selfie y mirá cómo te quedaría antes de reservar.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={colors.white} />
+              </LinearGradient>
+            </Pressable>
+            <Text style={styles.hint}>Elegí un servicio para ver los días y horarios disponibles.</Text>
+          </View>
+        }
+        ListEmptyComponent={empty}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+      />
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    padding: 0,
+  },
+  list: {
+    padding: spacing.md,
+  },
+  header: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
+  colorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+  },
+  colorTexts: {
+    flex: 1,
+    gap: 2,
+  },
+  colorTitle: {
+    fontFamily: fonts.subtitle,
+    fontSize: fontSizes.md,
+    color: colors.white,
+  },
+  colorText: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.white,
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  separator: {
+    height: spacing.sm,
+  },
+  loading: {
+    paddingVertical: spacing.xl,
+  },
+  gap: {
+    gap: spacing.md,
+  },
+});
