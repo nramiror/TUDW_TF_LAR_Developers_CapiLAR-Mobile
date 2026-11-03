@@ -21,6 +21,13 @@ export const validatePassword = (password: string) => {
 // Deja solo los números (el teclado del celular puede meter espacios o guiones al pegar)
 export const onlyDigits = (value: string) => value.replace(/\D/g, '');
 
+// Número escrito con coma o punto ("1,5"), de 0 en adelante y con hasta `decimales` decimales. null si no es válido
+export const parseDecimal = (value: string, decimales: number) => {
+  const text = value.trim().replace(',', '.');
+  if (!new RegExp(`^\\d+(\\.\\d{1,${decimales}})?$`).test(text)) return null;
+  return Number(text);
+};
+
 // --- Fecha de nacimiento: se escribe "DD/MM/AAAA" y viaja como "YYYY-MM-DD" (mismas reglas que el back) ---
 
 // Mientras se escribe: solo números y las barras se ponen solas ("23041995" -> "23/04/1995")
