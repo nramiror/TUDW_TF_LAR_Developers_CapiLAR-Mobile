@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { formatAlergias } from '@/api/alergias';
 import { ApiError } from '@/api/client';
 import { getMyServicesRequest, getUpcomingWorkDatesRequest } from '@/api/professionals';
 import { formatServiceDuration } from '@/api/services';
@@ -41,7 +42,7 @@ const ClienteInfo = ({ cliente }: { cliente: ClienteResumen }) => (
     </Text>
     <Text style={styles.clienteDato}>{cliente.email}</Text>
     {cliente.telefono ? <Text style={styles.clienteDato}>{cliente.telefono}</Text> : null}
-    {cliente.cliente?.alergia ? <Text style={styles.alergia}>Alergia: {cliente.cliente.alergia}</Text> : null}
+    {formatAlergias(cliente.cliente) ? <Text style={styles.alergia}>Alergia: {formatAlergias(cliente.cliente)}</Text> : null}
   </View>
 );
 

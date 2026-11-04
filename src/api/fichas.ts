@@ -30,6 +30,11 @@ export interface FormulaInsumo {
   // El back lo devuelve como texto ("30" o "12.5") y lo recibe como número
   cantidad: string | number | null;
   unidad: UnidadInsumo | null;
+  // F11: artículo del stock (uso SALON o AMBOS). Con él, el back completa producto, marca, tono y unidad,
+  // la cantidad es obligatoria y al completar el turno se descuenta del stock
+  articuloId?: number | null;
+  // Lo que costó (precio de costo proporcional), calculado al completar el turno. null en texto libre o ficha abierta
+  costoSubtotal?: string | null;
 }
 
 export interface Formula {

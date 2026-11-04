@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { AlergiasField } from '@/components/alergiasField/alergiasField';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -61,6 +62,8 @@ export default function Registro() {
   const { register } = useAuth();
 
   const [values, setValues] = useState<FormValues>(initialValues);
+  // Las de la lista del salón; values.alergia es la "Otra"
+  const [alergiaIds, setAlergiaIds] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,6 +91,7 @@ export default function Registro() {
         email: values.email.trim().toLowerCase(),
         telefono: values.telefono,
         contrasena: values.contrasena,
+        alergiaIds: alergiaIds.length > 0 ? alergiaIds : undefined,
         alergia: values.alergia.trim() || undefined,
       });
     } catch (err) {
@@ -122,12 +126,11 @@ export default function Registro() {
         hint="Solo números, con código de área y sin 0 ni 15"
         {...bind('telefono')}
       />
-      <TextField
-        label="Alergias o sensibilidades (opcional)"
-        placeholder="ej. amoníaco"
-        hint="Le sirve a tu estilista para elegir los productos"
-        maxLength={255}
-        {...bind('alergia')}
+      <AlergiasField
+        selected={alergiaIds}
+        onChangeSelected={setAlergiaIds}
+        otra={values.alergia}
+        onChangeOtra={(text) => setValues((prev) => ({ ...prev, alergia: text }))}
       />
       <TextField
         label="Contraseña"

@@ -1,3 +1,4 @@
+import type { AlergiaCliente } from './alergias';
 import { apiFetch } from './client';
 
 // Copiado del front (src/api/turnos.ts): mismos tipos, reglas y endpoints de turnos.
@@ -42,6 +43,8 @@ export interface Turno {
     nombre: string;
     apellido: string;
     telefono: string;
+    // Las de la lista del salón y "Otra" en texto libre (mostrarlas juntas con formatAlergias)
+    alergias?: AlergiaCliente[];
     alergia: string | null;
     // null: todavía no verificó su email (no puede reservar sola)
     emailVerificadoEn?: string | null;
@@ -128,8 +131,10 @@ export const acceptRescheduleRequest = (token: string, id: number) =>
 export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =>
   apiFetch<Turno>(`/turnos/${id}/cancelar`, { method: 'PATCH', body: motivo ? { motivo } : {}, token });
 
+// Cierra las fichas y descuenta del stock sus insumos con artículo. Sin stock suficiente se descuenta igual:
+// sinStock trae los artículos que quedaron por debajo de 0 (vacío si ninguno)
 export const completeTurnoRequest = (token: string, id: number) =>
-  apiFetch<Turno>(`/turnos/${id}/completar`, { method: 'PATCH', token });
+  apiFetch<Turno & { sinStock: { id: number; nombre: string; stock: string }[] }>(`/turnos/${id}/completar`, { method: 'PATCH', token });
 
 // PROFESIONAL: el cliente no vino (CONFIRMADO -> AUSENTE), desde la hora de fin del turno
 export const markAbsentRequest = (token: string, id: number) =>

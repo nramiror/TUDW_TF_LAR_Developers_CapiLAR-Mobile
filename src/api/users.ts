@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 
+import type { AlergiaCliente } from './alergias';
 import type { Usuario } from './auth';
 import { apiFetch } from './client';
 
@@ -11,7 +12,9 @@ export interface UpdateProfileData {
   nombre?: string;
   apellido?: string;
   telefono?: string;
-  // Solo CLIENTE; null la borra
+  // Solo CLIENTE: id de GET /alergias; reemplaza la lista entera ([] las quita)
+  alergiaIds?: number[];
+  // Solo CLIENTE: "Otra", lo que no está en la lista; null la borra
   alergia?: string | null;
   // "YYYY-MM-DD"; null la borra
   fechaNacimiento?: string | null;
@@ -57,7 +60,7 @@ export interface ClienteResumen {
   apellido: string;
   email: string;
   telefono: string | null;
-  cliente: { alergia: string | null } | null;
+  cliente: { alergias?: AlergiaCliente[]; alergia: string | null } | null;
 }
 
 // Solo PROFESIONAL: clientes activos por nombre, apellido o email, ordenados por apellido
