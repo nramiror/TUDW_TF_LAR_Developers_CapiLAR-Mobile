@@ -94,8 +94,9 @@ export interface MovimientoCreado {
 
 export const MOVIMIENTOS_POR_PAGINA = 20;
 
-export const getArticulosRequest = (token: string, search?: string) => {
-  const query = search ? `?${new URLSearchParams({ search })}` : '';
+// Activos, por nombre. uso=SALON trae también los AMBOS: es lo que se puede usar en una ficha técnica
+export const getArticulosRequest = (token: string, uso?: UsoArticulo) => {
+  const query = uso ? `?${new URLSearchParams({ uso })}` : '';
   return apiFetch<Articulo[]>(`/articulos${query}`, { token });
 };
 
@@ -157,3 +158,15 @@ export const formatPeso = (value: string | number, unidad: UnidadInsumo) =>
 
 // "Wella Koleston Perfect"
 export const formatMarca = (marca: Articulo['marca']) => (marca.linea ? `${marca.razonSocial} ${marca.linea}` : marca.razonSocial);
+
+// --- Búsqueda en el celular (los artículos del salón son pocos: se traen todos y se filtran mientras se escribe) ---
+
+// Sin mayúsculas ni tildes, como la búsqueda del back
+const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// Busca en el nombre, la marca, el tono y el código
+export const coincideBusqueda = (articulo: Articulo, busqueda: string) => {
+  const texto = normalizar(busqueda.trim());
+  if (!texto) return true;
+  return normalizar([articulo.nombre, articulo.codigo, articulo.tonalidad, formatMarca(articulo.marca)].filter(Boolean).join(' ')).includes(texto);
+};

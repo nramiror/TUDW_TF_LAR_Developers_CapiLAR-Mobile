@@ -3,6 +3,7 @@ import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { formatEnvases } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import {
   MAX_DIAS_ANTICIPACION,
@@ -152,7 +153,28 @@ export default function Agenda() {
   const completar = (turno: Turno) => {
     Alert.alert('Completar turno', `¿Terminaste el turno de ${turno.cliente.nombre} ${turno.cliente.apellido}?`, [
       { text: 'No', style: 'cancel' },
-      { text: 'Sí, completar', onPress: () => run(turno, () => completeTurnoRequest(token, turno.id), 'No se pudo completar') },
+      {
+        text: 'Sí, completar',
+        onPress: async () => {
+          let sinStock: { nombre: string; stock: string }[] = [];
+          const ok = await run(
+            turno,
+            async () => {
+              const result = await completeTurnoRequest(token, turno.id);
+              sinStock = result.sinStock ?? [];
+              return result;
+            },
+            'No se pudo completar',
+          );
+          // F11: los insumos de la ficha se descuentan igual aunque no alcance el stock, pero se avisa
+          if (ok && sinStock.length > 0) {
+            Alert.alert(
+              'Stock en negativo',
+              `Con lo que usaste quedaron por debajo de 0:\n${sinStock.map((item) => `• ${item.nombre}: ${formatEnvases(item.stock)}`).join('\n')}\n\nRevisá si falta registrar algún ingreso en Stock.`,
+            );
+          }
+        },
+      },
     ]);
   };
 

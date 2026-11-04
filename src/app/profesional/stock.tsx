@@ -2,7 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { formatMarca, getArticulosRequest } from '@/api/articulos';
+import { coincideBusqueda, getArticulosRequest } from '@/api/articulos';
 import type { Articulo } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import { ArticuloCard } from '@/components/articuloCard/articuloCard';
@@ -16,14 +16,7 @@ import { colors, fonts, fontSizes, spacing } from '@/theme';
 
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
-// Sin mayúsculas ni tildes, como la búsqueda del back
-const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-const textoBuscable = (articulo: Articulo) =>
-  normalizar([articulo.nombre, articulo.codigo, articulo.tonalidad, formatMarca(articulo.marca)].filter(Boolean).join(' '));
-
-// F11: stock del salón. Los artículos del salón son pocos, así que se traen todos y se filtran en el celular mientras se escribe.
-// Cada artículo abre su detalle (movimientos y envase abierto); "Escanear QR" lo abre directo
+// F11: stock del salón, filtrado en el celular mientras se escribe. Cada artículo abre su detalle (movimientos y envase abierto); "Escanear QR" lo abre directo
 export default function Stock() {
   const { token } = useAuth();
   const [articulos, setArticulos] = useState<Articulo[]>([]);
@@ -60,12 +53,10 @@ export default function Stock() {
 
   const bajoStock = articulos.filter((articulo) => articulo.bajoStock).length;
 
-  const visibles = useMemo(() => {
-    const texto = normalizar(busqueda.trim());
-    return articulos.filter(
-      (articulo) => (!soloBajoStock || articulo.bajoStock) && (!texto || textoBuscable(articulo).includes(texto)),
-    );
-  }, [articulos, busqueda, soloBajoStock]);
+  const visibles = useMemo(
+    () => articulos.filter((articulo) => (!soloBajoStock || articulo.bajoStock) && coincideBusqueda(articulo, busqueda)),
+    [articulos, busqueda, soloBajoStock],
+  );
 
   const header = (
     <View style={styles.header}>

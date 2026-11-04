@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { formatMarca } from '@/api/articulos';
+import type { Articulo } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import {
   MAX_FORMULAS,
@@ -31,6 +33,7 @@ import type {
   VolumenDePelo,
 } from '@/api/fichas';
 import { formatFechaLarga } from '@/api/turnos';
+import { ArticuloPicker } from '@/components/articuloPicker/articuloPicker';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
@@ -45,6 +48,8 @@ import type { ImageSource } from '@/utils/pickImage';
 
 // Lo que se edita: los números van como texto mientras se escriben
 interface InsumoForm {
+  // F11: producto del stock. Con él, producto, marca, tono y unidad son los del artículo (no se editan)
+  articuloId: number | null;
   producto: string;
   marca: string;
   tono: string;
@@ -71,7 +76,7 @@ interface FichaForm {
   formulas: FormulaForm[];
 }
 
-const EMPTY_INSUMO: InsumoForm = { producto: '', marca: '', tono: '', cantidad: '', unidad: 'G' };
+const EMPTY_INSUMO: InsumoForm = { articuloId: null, producto: '', marca: '', tono: '', cantidad: '', unidad: 'G' };
 const EMPTY_FORMULA: FormulaForm = { descripcion: '', oxidanteVolumen: '', tiempoPoseMin: '', insumos: [EMPTY_INSUMO] };
 
 const numberText = (value: number | string | null) => (value === null || value === '' ? '' : String(Number(value)));
@@ -90,6 +95,7 @@ const toForm = (ficha: Ficha | null): FichaForm => ({
     oxidanteVolumen: numberText(formula.oxidanteVolumen),
     tiempoPoseMin: numberText(formula.tiempoPoseMin),
     insumos: formula.insumos.map((insumo) => ({
+      articuloId: insumo.articuloId ?? null,
       producto: insumo.producto,
       marca: insumo.marca ?? '',
       tono: insumo.tono ?? '',
@@ -122,12 +128,27 @@ const toData = (form: FichaForm): { data: FichaData } | { error: string } => {
 
     const insumos: FormulaInsumo[] = [];
     for (const [j, insumo] of formula.insumos.entries()) {
-      const vacio = !insumo.producto.trim() && !insumo.marca.trim() && !insumo.tono.trim() && !insumo.cantidad.trim();
+      const vacio =
+        insumo.articuloId === null && !insumo.producto.trim() && !insumo.marca.trim() && !insumo.tono.trim() && !insumo.cantidad.trim();
       if (vacio) continue;
       if (!insumo.producto.trim()) return { error: `Fórmula ${n}, insumo ${j + 1}: falta el producto.` };
       const cantidadText = insumo.cantidad.trim().replace(',', '.');
       if (cantidadText && (!/^\d+(\.\d{1,2})?$/.test(cantidadText) || Number(cantidadText) <= 0)) {
         return { error: `Fórmula ${n}, insumo ${j + 1}: la cantidad tiene que ser mayor a 0, con hasta 2 decimales.` };
+      }
+      // Del stock: la cantidad es lo que se descuenta al completar el turno, así que es obligatoria.
+      // Producto, marca, tono y unidad los vuelve a poner el back desde el artículo
+      if (insumo.articuloId !== null) {
+        if (!cantidadText) return { error: `Fórmula ${n}, insumo ${j + 1}: con un producto del stock, la cantidad es obligatoria.` };
+        insumos.push({
+          articuloId: insumo.articuloId,
+          producto: insumo.producto,
+          marca: insumo.marca || null,
+          tono: insumo.tono || null,
+          cantidad: Number(cantidadText),
+          unidad: insumo.unidad,
+        });
+        continue;
       }
       insumos.push({
         producto: insumo.producto.trim(),
@@ -221,6 +242,8 @@ export default function FichaTecnica() {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [busyTipo, setBusyTipo] = useState<MomentoFoto | null>(null);
+  // Insumo para el que se está eligiendo un producto del stock
+  const [pickerFor, setPickerFor] = useState<{ formula: number; insumo: number } | null>(null);
 
   // Cada servicio del turno trae el id de su ficha: sin ficha, el formulario arranca vacío
   const load = useCallback(async () => {
@@ -317,6 +340,19 @@ export default function FichaTecnica() {
           : formula,
       ),
     );
+
+  // Producto, marca, tono y unidad pasan a ser los del artículo; la cantidad que se había escrito se mantiene
+  const elegirArticulo = (articulo: Articulo) => {
+    if (!pickerFor) return;
+    updateInsumo(pickerFor.formula, pickerFor.insumo, {
+      articuloId: articulo.id,
+      producto: articulo.nombre,
+      marca: formatMarca(articulo.marca),
+      tono: articulo.tonalidad ?? '',
+      unidad: articulo.tipoPeso,
+    });
+    setPickerFor(null);
+  };
 
   // Crea la ficha o guarda los cambios. Devuelve la ficha guardada, o null si hubo un error
   const save = async () => {
@@ -471,51 +507,86 @@ export default function FichaTecnica() {
                     <Ionicons name="close-circle-outline" size={20} color={colors.grey} />
                   </Pressable>
                 </View>
-                <TextField
-                  label="Producto"
-                  placeholder="ej. Tintura, decolorante"
-                  maxLength={100}
-                  value={insumo.producto}
-                  onChangeText={(text) => updateInsumo(index, insumoIndex, { producto: text })}
-                />
-                <View style={styles.pair}>
-                  <View style={styles.half}>
+                {insumo.articuloId !== null ? (
+                  <>
+                    <View style={styles.stockBox}>
+                      <Ionicons name="cube-outline" size={20} color={colors.violet} />
+                      <View style={styles.flex}>
+                        <Text style={styles.stockNombre}>{insumo.producto}</Text>
+                        <Text style={styles.detail}>{[insumo.marca, insumo.tono && `Tono ${insumo.tono}`].filter(Boolean).join(' · ')}</Text>
+                      </View>
+                    </View>
                     <TextField
-                      label="Marca"
-                      placeholder="ej. Koleston"
-                      maxLength={100}
-                      value={insumo.marca}
-                      onChangeText={(text) => updateInsumo(index, insumoIndex, { marca: text })}
+                      label={`Cantidad (${insumo.unidad ? UNIDAD_LABEL[insumo.unidad] : ''})`}
+                      placeholder="ej. 30"
+                      keyboardType="decimal-pad"
+                      maxLength={10}
+                      value={insumo.cantidad}
+                      onChangeText={(text) => updateInsumo(index, insumoIndex, { cantidad: text })}
+                      hint="Se descuenta del stock al completar el turno."
                     />
-                  </View>
-                  <View style={styles.half}>
-                    <TextField
-                      label="Tono"
-                      placeholder="ej. 7.1"
-                      maxLength={50}
-                      value={insumo.tono}
-                      onChangeText={(text) => updateInsumo(index, insumoIndex, { tono: text })}
-                    />
-                  </View>
-                </View>
-                <TextField
-                  label="Cantidad"
-                  placeholder="ej. 30"
-                  keyboardType="decimal-pad"
-                  maxLength={10}
-                  value={insumo.cantidad}
-                  onChangeText={(text) => updateInsumo(index, insumoIndex, { cantidad: text })}
-                />
-                <View style={styles.chips}>
-                  {(Object.keys(UNIDAD_LABEL) as UnidadInsumo[]).map((unidad) => (
+                    <View style={styles.chips}>
+                      <Chip label="Cambiar producto" onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })} />
+                      <Chip
+                        label="Escribir a mano"
+                        onPress={() => updateInsumo(index, insumoIndex, { ...EMPTY_INSUMO, cantidad: insumo.cantidad })}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <>
                     <Chip
-                      key={unidad}
-                      label={UNIDAD_LABEL[unidad]}
-                      selected={insumo.unidad === unidad}
-                      onPress={() => updateInsumo(index, insumoIndex, { unidad })}
+                      label="Elegir del stock"
+                      onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })}
+                      style={styles.addChip}
                     />
-                  ))}
-                </View>
+                    <TextField
+                      label="Producto"
+                      placeholder="ej. Tintura, decolorante"
+                      maxLength={100}
+                      value={insumo.producto}
+                      onChangeText={(text) => updateInsumo(index, insumoIndex, { producto: text })}
+                    />
+                    <View style={styles.pair}>
+                      <View style={styles.half}>
+                        <TextField
+                          label="Marca"
+                          placeholder="ej. Koleston"
+                          maxLength={100}
+                          value={insumo.marca}
+                          onChangeText={(text) => updateInsumo(index, insumoIndex, { marca: text })}
+                        />
+                      </View>
+                      <View style={styles.half}>
+                        <TextField
+                          label="Tono"
+                          placeholder="ej. 7.1"
+                          maxLength={50}
+                          value={insumo.tono}
+                          onChangeText={(text) => updateInsumo(index, insumoIndex, { tono: text })}
+                        />
+                      </View>
+                    </View>
+                    <TextField
+                      label="Cantidad"
+                      placeholder="ej. 30"
+                      keyboardType="decimal-pad"
+                      maxLength={10}
+                      value={insumo.cantidad}
+                      onChangeText={(text) => updateInsumo(index, insumoIndex, { cantidad: text })}
+                    />
+                    <View style={styles.chips}>
+                      {(Object.keys(UNIDAD_LABEL) as UnidadInsumo[]).map((unidad) => (
+                        <Chip
+                          key={unidad}
+                          label={UNIDAD_LABEL[unidad]}
+                          selected={insumo.unidad === unidad}
+                          onPress={() => updateInsumo(index, insumoIndex, { unidad })}
+                        />
+                      ))}
+                    </View>
+                  </>
+                )}
               </View>
             ))}
             {formula.insumos.length < MAX_INSUMOS && (
@@ -567,6 +638,8 @@ export default function FichaTecnica() {
       <Button onPress={handleSave} isLoading={isSaving} disabled={busyTipo !== null}>
         {ficha ? 'Guardar cambios' : 'Guardar ficha'}
       </Button>
+
+      <ArticuloPicker visible={pickerFor !== null} onSelect={elegirArticulo} onClose={() => setPickerFor(null)} />
     </Screen>
   );
 }
@@ -669,5 +742,23 @@ const styles = StyleSheet.create({
   },
   addChip: {
     alignSelf: 'flex-start',
+  },
+  stockBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.violet,
+    backgroundColor: colors.white,
+  },
+  stockNombre: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
+  flex: {
+    flex: 1,
   },
 });

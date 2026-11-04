@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -93,13 +94,29 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
                     .join(' · ')}
                 </Text>
               )}
-              {formula.insumos.map((insumo, i) => (
-                <Text key={insumo.id ?? i} style={styles.insumo}>
-                  • {formatInsumo(insumo)}
-                </Text>
-              ))}
+              {formula.insumos.map((insumo, i) =>
+                // F11: los del stock llevan la cajita (se descuentan al completar el turno)
+                insumo.articuloId ? (
+                  <View key={insumo.id ?? i} style={styles.insumoRow} accessibilityLabel={`${formatInsumo(insumo)}, del stock`}>
+                    <Ionicons name="cube-outline" size={14} color={colors.violet} style={styles.insumoIcon} />
+                    <Text style={[styles.insumo, styles.flex]}>{formatInsumo(insumo)}</Text>
+                  </View>
+                ) : (
+                  <Text key={insumo.id ?? i} style={styles.insumo}>
+                    • {formatInsumo(insumo)}
+                  </Text>
+                ),
+              )}
             </View>
           ))
+        )}
+        {ficha.formulas.some((formula) => formula.insumos.some((insumo) => insumo.articuloId)) && (
+          <View style={styles.insumoRow}>
+            <Ionicons name="cube-outline" size={14} color={colors.violet} style={styles.insumoIcon} />
+            <Text style={[styles.detail, styles.flex]}>
+              {ficha.cerradaEn ? 'Producto del stock: se descontó al completar el turno.' : 'Producto del stock: se descuenta al completar el turno.'}
+            </Text>
+          </View>
         )}
       </Section>
 
@@ -183,6 +200,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.black,
+  },
+  insumoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+  },
+  // Alineada con la primera línea del texto
+  insumoIcon: {
+    marginTop: 3,
+  },
+  flex: {
+    flex: 1,
   },
   detail: {
     fontFamily: fonts.body,
