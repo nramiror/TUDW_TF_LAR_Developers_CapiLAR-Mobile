@@ -1,3 +1,4 @@
+import type { AlergiaCliente } from './alergias';
 import { apiFetch } from './client';
 
 // Copiado del front (src/api/turnos.ts): mismos tipos, reglas y endpoints de turnos.
@@ -42,6 +43,8 @@ export interface Turno {
     nombre: string;
     apellido: string;
     telefono: string;
+    // Las de la lista del salón y "Otra" en texto libre (mostrarlas juntas con formatAlergias)
+    alergias?: AlergiaCliente[];
     alergia: string | null;
     // null: todavía no verificó su email (no puede reservar sola)
     emailVerificadoEn?: string | null;

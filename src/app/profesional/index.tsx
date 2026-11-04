@@ -3,6 +3,7 @@ import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { formatAlergias } from '@/api/alergias';
 import { formatEnvases } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import {
@@ -197,7 +198,7 @@ export default function Agenda() {
         // Vacío si todavía no tiene ficha (la agenda se recarga al volver, así llega la recién creada)
         fichaId: detalle.fichaId ? String(detalle.fichaId) : '',
         cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
-        alergia: turno.cliente.alergia ?? '',
+        alergia: formatAlergias(turno.cliente),
         servicio: detalle.servicio,
         fecha: turno.fecha,
         estado: turno.estado,

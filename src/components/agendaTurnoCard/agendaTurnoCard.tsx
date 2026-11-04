@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { formatAlergias } from '@/api/alergias';
 import { formatFechaLarga } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -31,6 +32,7 @@ interface AgendaTurnoCardProps {
 export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTurnoCardProps) => {
   const estado = ESTADO[turno.estado];
   const inactivo = turno.estado === 'CANCELADO' || turno.estado === 'RECHAZADO';
+  const alergias = formatAlergias(turno.cliente);
 
   return (
     <View style={[styles.card, inactivo && styles.inactive]}>
@@ -64,10 +66,10 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
         <Ionicons name="call-outline" size={16} color={colors.grey} />
         <Text style={styles.detail}>{turno.cliente.telefono}</Text>
       </View>
-      {turno.cliente.alergia ? (
+      {alergias ? (
         <View style={styles.row}>
           <Ionicons name="warning-outline" size={16} color={colors.error} />
-          <Text style={[styles.detail, styles.alergia]}>Alergia: {turno.cliente.alergia}</Text>
+          <Text style={[styles.detail, styles.alergia]}>Alergia: {alergias}</Text>
         </View>
       ) : null}
       {turno.detalles.map((detalle) => (

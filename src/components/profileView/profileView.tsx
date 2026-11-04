@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
+import { formatAlergias } from '@/api/alergias';
 import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
@@ -98,7 +99,7 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
         <DataRow icon="call-outline" label="Teléfono" value={user.telefono || '—'} />
         {user.fechaNacimiento && <DataRow icon="gift-outline" label="Fecha de nacimiento" value={isoToFecha(user.fechaNacimiento)} />}
         {user.rol === 'CLIENTE' && (
-          <DataRow icon="medkit-outline" label="Alergias o sensibilidades" value={user.cliente?.alergia || 'Ninguna cargada'} />
+          <DataRow icon="medkit-outline" label="Alergias o sensibilidades" value={formatAlergias(user.cliente) || 'Ninguna cargada'} />
         )}
         {user.rol === 'PROFESIONAL' && user.profesional && (
           <DataRow icon="id-card-outline" label="Legajo" value={String(user.profesional.legajo)} />
