@@ -32,15 +32,25 @@ import type {
   UnidadInsumo,
   VolumenDePelo,
 } from '@/api/fichas';
+import { parseTratamientos, serializeTratamientos } from '@/api/tratamientos';
 import { formatFechaLarga } from '@/api/turnos';
 import { ArticuloPicker } from '@/components/articuloPicker/articuloPicker';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
-import { FichaView } from '@/components/fichaView/fichaView';
+import { FichaView, formatInsumo } from '@/components/fichaView/fichaView';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { TextField } from '@/components/textField/textField';
+import {
+  TratamientosField,
+  filaVacia,
+  fromTratamientoDraft,
+  newTratamiento,
+  toTratamientoDraft,
+  validarTratamiento,
+} from '@/components/tratamientosField/tratamientosField';
+import type { TratamientoDraft } from '@/components/tratamientosField/tratamientosField';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 import { pickImage } from '@/utils/pickImage';
@@ -50,6 +60,9 @@ import type { ImageSource } from '@/utils/pickImage';
 interface InsumoForm {
   // F11: producto del stock. Con él, producto, marca, tono y unidad son los del artículo (no se editan)
   articuloId: number | null;
+  // Insumo escrito a mano en una ficha anterior: se conserva tal cual (no descuenta stock). Los nuevos salen
+  // solo del stock, como en la web, así descuentan y suman al costo del turno
+  comoTexto: boolean;
   producto: string;
   marca: string;
   tono: string;
@@ -59,7 +72,9 @@ interface InsumoForm {
 
 interface FormulaForm {
   descripcion: string;
-  oxidanteVolumen: string;
+  // Ya no se carga: el oxidante es un insumo más del stock. Se guarda el de las fichas viejas para reenviarlo
+  // sin cambios (PATCH reemplaza todas las fórmulas y si no va, se pierde)
+  oxidanteVolumen: number | null;
   tiempoPoseMin: string;
   insumos: InsumoForm[];
 }
@@ -70,40 +85,50 @@ interface FichaForm {
   porcentajeCanas: string;
   tipoDePelo: TipoDePelo | null;
   volumenDePelo: VolumenDePelo | null;
-  tratamientosPrevios: string;
+  // Filas "Tratamiento | Frecuencia | MM/AAAA" y lo que no tiene ese formato (fichas viejas, texto libre)
+  tratamientos: TratamientoDraft[];
+  notasTratamientos: string;
   observacionesInternas: string;
   indicacionesCliente: string;
   formulas: FormulaForm[];
 }
 
-const EMPTY_INSUMO: InsumoForm = { articuloId: null, producto: '', marca: '', tono: '', cantidad: '', unidad: 'G' };
-const EMPTY_FORMULA: FormulaForm = { descripcion: '', oxidanteVolumen: '', tiempoPoseMin: '', insumos: [EMPTY_INSUMO] };
+const EMPTY_INSUMO: InsumoForm = { articuloId: null, comoTexto: false, producto: '', marca: '', tono: '', cantidad: '', unidad: null };
+const EMPTY_FORMULA: FormulaForm = { descripcion: '', oxidanteVolumen: null, tiempoPoseMin: '', insumos: [EMPTY_INSUMO] };
+
+// Mismo límite que el back para tratamientosPrevios
+const MAX_TEXTO = 1000;
 
 const numberText = (value: number | string | null) => (value === null || value === '' ? '' : String(Number(value)));
 
-const toForm = (ficha: Ficha | null): FichaForm => ({
-  porosidad: ficha?.porosidad ?? null,
-  elasticidad: ficha?.elasticidad ?? null,
-  porcentajeCanas: numberText(ficha?.porcentajeCanas ?? null),
-  tipoDePelo: ficha?.tipoDePelo ?? null,
-  volumenDePelo: ficha?.volumenDePelo ?? null,
-  tratamientosPrevios: ficha?.tratamientosPrevios ?? '',
-  observacionesInternas: ficha?.observacionesInternas ?? '',
-  indicacionesCliente: ficha?.indicacionesCliente ?? '',
-  formulas: (ficha?.formulas ?? []).map((formula) => ({
-    descripcion: formula.descripcion ?? '',
-    oxidanteVolumen: numberText(formula.oxidanteVolumen),
-    tiempoPoseMin: numberText(formula.tiempoPoseMin),
-    insumos: formula.insumos.map((insumo) => ({
-      articuloId: insumo.articuloId ?? null,
-      producto: insumo.producto,
-      marca: insumo.marca ?? '',
-      tono: insumo.tono ?? '',
-      cantidad: numberText(insumo.cantidad),
-      unidad: insumo.unidad,
+const toForm = (ficha: Ficha | null): FichaForm => {
+  const tratamientos = parseTratamientos(ficha?.tratamientosPrevios ?? null);
+  return {
+    porosidad: ficha?.porosidad ?? null,
+    elasticidad: ficha?.elasticidad ?? null,
+    porcentajeCanas: numberText(ficha?.porcentajeCanas ?? null),
+    tipoDePelo: ficha?.tipoDePelo ?? null,
+    volumenDePelo: ficha?.volumenDePelo ?? null,
+    tratamientos: tratamientos.filas.map(toTratamientoDraft),
+    notasTratamientos: tratamientos.notas,
+    observacionesInternas: ficha?.observacionesInternas ?? '',
+    indicacionesCliente: ficha?.indicacionesCliente ?? '',
+    formulas: (ficha?.formulas ?? []).map((formula) => ({
+      descripcion: formula.descripcion ?? '',
+      oxidanteVolumen: formula.oxidanteVolumen,
+      tiempoPoseMin: numberText(formula.tiempoPoseMin),
+      insumos: formula.insumos.map((insumo) => ({
+        articuloId: insumo.articuloId ?? null,
+        comoTexto: !insumo.articuloId,
+        producto: insumo.producto,
+        marca: insumo.marca ?? '',
+        tono: insumo.tono ?? '',
+        cantidad: numberText(insumo.cantidad),
+        unidad: insumo.unidad,
+      })),
     })),
-  })),
-});
+  };
+};
 
 // Entero dentro del rango, o null si está vacío; undefined si no es válido
 const parseEntero = (text: string, min: number, max: number) => {
@@ -121,17 +146,14 @@ const toData = (form: FichaForm): { data: FichaData } | { error: string } => {
   const formulas: Formula[] = [];
   for (const [i, formula] of form.formulas.entries()) {
     const n = i + 1;
-    const oxidanteVolumen = parseEntero(formula.oxidanteVolumen, 1, 60);
-    if (oxidanteVolumen === undefined) return { error: `Fórmula ${n}: el oxidante va de 1 a 60 vol.` };
+    const { oxidanteVolumen } = formula;
     const tiempoPoseMin = parseEntero(formula.tiempoPoseMin, 1, 240);
     if (tiempoPoseMin === undefined) return { error: `Fórmula ${n}: el tiempo de pose va de 1 a 240 minutos.` };
 
     const insumos: FormulaInsumo[] = [];
     for (const [j, insumo] of formula.insumos.entries()) {
-      const vacio =
-        insumo.articuloId === null && !insumo.producto.trim() && !insumo.marca.trim() && !insumo.tono.trim() && !insumo.cantidad.trim();
-      if (vacio) continue;
-      if (!insumo.producto.trim()) return { error: `Fórmula ${n}, insumo ${j + 1}: falta el producto.` };
+      // Uno nuevo al que todavía no se le eligió producto del stock: no se manda
+      if (insumo.articuloId === null && !insumo.comoTexto) continue;
       const cantidadText = insumo.cantidad.trim().replace(',', '.');
       if (cantidadText && (!/^\d+(\.\d{1,2})?$/.test(cantidadText) || Number(cantidadText) <= 0)) {
         return { error: `Fórmula ${n}, insumo ${j + 1}: la cantidad tiene que ser mayor a 0, con hasta 2 decimales.` };
@@ -150,18 +172,27 @@ const toData = (form: FichaForm): { data: FichaData } | { error: string } => {
         });
         continue;
       }
+      // Escrito a mano antes: se reenvía igual (PATCH reemplaza las fórmulas y si no va, se borra)
       insumos.push({
-        producto: insumo.producto.trim(),
-        marca: insumo.marca.trim() || null,
-        tono: insumo.tono.trim() || null,
+        producto: insumo.producto,
+        marca: insumo.marca || null,
+        tono: insumo.tono || null,
         cantidad: cantidadText ? Number(cantidadText) : null,
-        unidad: cantidadText ? insumo.unidad : null,
+        unidad: insumo.unidad,
       });
     }
 
     const descripcion = formula.descripcion.trim() || null;
     if (!descripcion && oxidanteVolumen === null && tiempoPoseMin === null && insumos.length === 0) continue;
     formulas.push({ descripcion, oxidanteVolumen, tiempoPoseMin, insumos });
+  }
+
+  const tratamientosPrevios = serializeTratamientos({
+    filas: form.tratamientos.filter((fila) => !filaVacia(fila)).map(fromTratamientoDraft),
+    notas: form.notasTratamientos,
+  });
+  if (tratamientosPrevios.length > MAX_TEXTO) {
+    return { error: 'Los tratamientos previos son demasiado largos: sacá alguna fila o acortá los otros datos.' };
   }
 
   return {
@@ -171,7 +202,7 @@ const toData = (form: FichaForm): { data: FichaData } | { error: string } => {
       porcentajeCanas,
       tipoDePelo: form.tipoDePelo,
       volumenDePelo: form.volumenDePelo,
-      tratamientosPrevios: form.tratamientosPrevios.trim() || null,
+      tratamientosPrevios: tratamientosPrevios || null,
       observacionesInternas: form.observacionesInternas.trim() || null,
       indicacionesCliente: form.indicacionesCliente.trim() || null,
       formulas,
@@ -241,6 +272,8 @@ export default function FichaTecnica() {
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  // Error de cada fila de tratamientos previos, por su posición
+  const [erroresTratamientos, setErroresTratamientos] = useState<(string | undefined)[]>([]);
   const [busyTipo, setBusyTipo] = useState<MomentoFoto | null>(null);
   // Insumo para el que se está eligiendo un producto del stock
   const [pickerFor, setPickerFor] = useState<{ formula: number; insumo: number } | null>(null);
@@ -346,6 +379,7 @@ export default function FichaTecnica() {
     if (!pickerFor) return;
     updateInsumo(pickerFor.formula, pickerFor.insumo, {
       articuloId: articulo.id,
+      comoTexto: false,
       producto: articulo.nombre,
       marca: formatMarca(articulo.marca),
       tono: articulo.tonalidad ?? '',
@@ -356,6 +390,12 @@ export default function FichaTecnica() {
 
   // Crea la ficha o guarda los cambios. Devuelve la ficha guardada, o null si hubo un error
   const save = async () => {
+    const errores = form.tratamientos.map((fila) => (filaVacia(fila) ? undefined : validarTratamiento(fila)));
+    setErroresTratamientos(errores);
+    if (errores.some(Boolean)) {
+      setError('Revisá los tratamientos previos.');
+      return null;
+    }
     const result = toData(form);
     if ('error' in result) {
       setError(result.error);
@@ -439,18 +479,37 @@ export default function FichaTecnica() {
           value={form.porcentajeCanas}
           onChangeText={(text) => setField('porcentajeCanas', text)}
         />
+      </Section>
+
+      <Section title="Tratamientos previos" hint="Qué se hizo antes en el pelo, cada cuánto y cuándo fue la última vez.">
+        <TratamientosField
+          filas={form.tratamientos}
+          onChange={(filas) => {
+            setField('tratamientos', filas);
+            setErroresTratamientos([]);
+          }}
+          errores={erroresTratamientos}
+        />
+        <Chip
+          label="+ Agregar tratamiento"
+          onPress={() => setField('tratamientos', [...form.tratamientos, newTratamiento()])}
+          style={styles.addChip}
+        />
         <TextField
-          label="Tratamientos previos"
-          placeholder="ej. Alisado hace 6 meses, decoloración"
+          label="Otros datos (opcional)"
+          placeholder="ej. Cuero cabelludo sensible"
           multiline
-          maxLength={1000}
+          maxLength={MAX_TEXTO}
           style={styles.multiline}
-          value={form.tratamientosPrevios}
-          onChangeText={(text) => setField('tratamientosPrevios', text)}
+          value={form.notasTratamientos}
+          onChangeText={(text) => setField('notasTratamientos', text)}
         />
       </Section>
 
-      <Section title="Fórmulas aplicadas" hint="En el orden en que se aplicaron: tintura, decolorante, oxidante y tiempos.">
+      <Section
+        title="Fórmulas aplicadas"
+        hint="En el orden en que se aplicaron. Cada fórmula son los productos que se mezclan, oxidante incluido: elegilos del stock."
+      >
         {form.formulas.map((formula, index) => (
           <View key={index} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -471,28 +530,19 @@ export default function FichaTecnica() {
               value={formula.descripcion}
               onChangeText={(text) => updateFormula(index, { descripcion: text })}
             />
-            <View style={styles.pair}>
-              <View style={styles.half}>
-                <TextField
-                  label="Oxidante (vol.)"
-                  placeholder="ej. 20"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  value={formula.oxidanteVolumen}
-                  onChangeText={(text) => updateFormula(index, { oxidanteVolumen: text })}
-                />
-              </View>
-              <View style={styles.half}>
-                <TextField
-                  label="Pose (min)"
-                  placeholder="ej. 35"
-                  keyboardType="number-pad"
-                  maxLength={3}
-                  value={formula.tiempoPoseMin}
-                  onChangeText={(text) => updateFormula(index, { tiempoPoseMin: text })}
-                />
-              </View>
-            </View>
+            <TextField
+              label="Pose (min)"
+              placeholder="ej. 35"
+              keyboardType="number-pad"
+              maxLength={3}
+              value={formula.tiempoPoseMin}
+              onChangeText={(text) => updateFormula(index, { tiempoPoseMin: text })}
+            />
+            {formula.oxidanteVolumen !== null && (
+              <Text style={styles.hint}>
+                Oxidante {formula.oxidanteVolumen} vol. (cargado antes de que el oxidante se eligiera del stock: se mantiene).
+              </Text>
+            )}
 
             {formula.insumos.map((insumo, insumoIndex) => (
               <View key={insumoIndex} style={styles.insumo}>
@@ -525,74 +575,38 @@ export default function FichaTecnica() {
                       onChangeText={(text) => updateInsumo(index, insumoIndex, { cantidad: text })}
                       hint="Se descuenta del stock al completar el turno."
                     />
-                    <View style={styles.chips}>
-                      <Chip label="Cambiar producto" onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })} />
-                      <Chip
-                        label="Escribir a mano"
-                        onPress={() => updateInsumo(index, insumoIndex, { ...EMPTY_INSUMO, cantidad: insumo.cantidad })}
-                      />
-                    </View>
-                  </>
-                ) : (
-                  <>
                     <Chip
-                      label="Elegir del stock"
+                      label="Cambiar producto"
                       onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })}
                       style={styles.addChip}
                     />
-                    <TextField
-                      label="Producto"
-                      placeholder="ej. Tintura, decolorante"
-                      maxLength={100}
-                      value={insumo.producto}
-                      onChangeText={(text) => updateInsumo(index, insumoIndex, { producto: text })}
-                    />
-                    <View style={styles.pair}>
-                      <View style={styles.half}>
-                        <TextField
-                          label="Marca"
-                          placeholder="ej. Koleston"
-                          maxLength={100}
-                          value={insumo.marca}
-                          onChangeText={(text) => updateInsumo(index, insumoIndex, { marca: text })}
-                        />
-                      </View>
-                      <View style={styles.half}>
-                        <TextField
-                          label="Tono"
-                          placeholder="ej. 7.1"
-                          maxLength={50}
-                          value={insumo.tono}
-                          onChangeText={(text) => updateInsumo(index, insumoIndex, { tono: text })}
-                        />
-                      </View>
-                    </View>
-                    <TextField
-                      label="Cantidad"
-                      placeholder="ej. 30"
-                      keyboardType="decimal-pad"
-                      maxLength={10}
-                      value={insumo.cantidad}
-                      onChangeText={(text) => updateInsumo(index, insumoIndex, { cantidad: text })}
-                    />
-                    <View style={styles.chips}>
-                      {(Object.keys(UNIDAD_LABEL) as UnidadInsumo[]).map((unidad) => (
-                        <Chip
-                          key={unidad}
-                          label={UNIDAD_LABEL[unidad]}
-                          selected={insumo.unidad === unidad}
-                          onPress={() => updateInsumo(index, insumoIndex, { unidad })}
-                        />
-                      ))}
-                    </View>
                   </>
+                ) : insumo.comoTexto ? (
+                  <>
+                    <Text style={styles.insumoTexto}>{formatInsumo({ ...insumo, cantidad: insumo.cantidad || null })}</Text>
+                    <Text style={styles.hint}>Cargado como texto: no descuenta stock.</Text>
+                    <Chip
+                      label="Cambiar por uno del stock"
+                      onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })}
+                      style={styles.addChip}
+                    />
+                  </>
+                ) : (
+                  <Chip
+                    label="Elegir del stock"
+                    onPress={() => setPickerFor({ formula: index, insumo: insumoIndex })}
+                    style={styles.addChip}
+                  />
                 )}
               </View>
             ))}
             {formula.insumos.length < MAX_INSUMOS && (
               <Chip
                 label="+ Agregar producto"
-                onPress={() => updateFormula(index, { insumos: [...formula.insumos, EMPTY_INSUMO] })}
+                onPress={() => {
+                  updateFormula(index, { insumos: [...formula.insumos, EMPTY_INSUMO] });
+                  setPickerFor({ formula: index, insumo: formula.insumos.length });
+                }}
                 style={styles.addChip}
               />
             )}
@@ -727,13 +741,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.md,
     color: colors.violet,
   },
-  pair: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  half: {
-    flex: 1,
-  },
   insumo: {
     gap: spacing.sm,
     padding: spacing.sm,
@@ -752,6 +759,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.violet,
     backgroundColor: colors.white,
+  },
+  insumoTexto: {
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.black,
   },
   stockNombre: {
     fontFamily: fonts.bodySemiBold,

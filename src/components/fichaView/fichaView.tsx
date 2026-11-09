@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { NIVEL_LABEL, TIPO_DE_PELO_LABEL, UNIDAD_LABEL, VOLUMEN_LABEL } from '@/api/fichas';
 import type { Ficha, FormulaInsumo } from '@/api/fichas';
+import { parseTratamientos } from '@/api/tratamientos';
 import { formatFechaLarga } from '@/api/turnos';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -35,6 +36,34 @@ const Dato = ({ label, value }: { label: string; value: string | null | undefine
     </View>
   ) : null;
 
+// Las filas (tratamiento, frecuencia y última vez) y, debajo, lo que no tiene ese formato (fichas viejas o
+// texto libre), como en la web
+const TratamientosPrevios = ({ texto }: { texto: string | null }) => {
+  const { filas, notas } = parseTratamientos(texto);
+  if (filas.length === 0 && !notas) return null;
+  return (
+    <View style={styles.tratamientos}>
+      <Text style={styles.datoLabel}>Tratamientos previos</Text>
+      {filas.map((fila, index) => (
+        <View key={index} style={styles.tratamiento}>
+          <Text style={styles.tratamientoNombre}>{fila.tratamiento}</Text>
+          {(fila.frecuencia || fila.ultimaVez) && (
+            <Text style={styles.detail}>
+              {[fila.frecuencia, fila.ultimaVez && `Última vez ${fila.ultimaVez}`].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+        </View>
+      ))}
+      {notas !== '' && (
+        <View style={styles.tratamiento}>
+          {filas.length > 0 && <Text style={styles.datoLabel}>Otros datos</Text>}
+          <Text style={styles.text}>{notas}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 interface FichaViewProps {
   ficha: Ficha;
 }
@@ -47,9 +76,8 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
     ['Canas', ficha.porcentajeCanas !== null ? `${ficha.porcentajeCanas}%` : null],
     ['Tipo de pelo', ficha.tipoDePelo && TIPO_DE_PELO_LABEL[ficha.tipoDePelo]],
     ['Volumen', ficha.volumenDePelo && VOLUMEN_LABEL[ficha.volumenDePelo]],
-    ['Tratamientos previos', ficha.tratamientosPrevios],
   ] as const;
-  const sinAntecedentes = antecedentes.every(([, value]) => !value);
+  const sinAntecedentes = antecedentes.every(([, value]) => !value) && !ficha.tratamientosPrevios?.trim();
 
   return (
     <View style={styles.container}>
@@ -71,7 +99,12 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
         {sinAntecedentes ? (
           <Text style={styles.empty}>No se cargaron</Text>
         ) : (
-          antecedentes.map(([label, value]) => <Dato key={label} label={label} value={value} />)
+          <>
+            {antecedentes.map(([label, value]) => (
+              <Dato key={label} label={label} value={value} />
+            ))}
+            <TratamientosPrevios texto={ficha.tratamientosPrevios} />
+          </>
         )}
       </Section>
 
@@ -184,6 +217,20 @@ const styles = StyleSheet.create({
   datoValue: {
     flexShrink: 1,
     textAlign: 'right',
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
+  tratamientos: {
+    gap: spacing.xs,
+  },
+  tratamiento: {
+    gap: 2,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+  },
+  tratamientoNombre: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
     color: colors.black,
