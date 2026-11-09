@@ -260,8 +260,13 @@ export default function Agenda() {
       });
     }
     list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
-    // Las series salen de un turno confirmado (el back avisa si ya es parte de una)
-    if (turno.estado === 'CONFIRMADO' && turno.detalles.some((item) => item.legajo === legajo)) {
+    // Las series salen de un turno confirmado o completado que todavía no es de una serie (ni empezó una)
+    if (
+      ['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) &&
+      !turno.serieId &&
+      !turno.serieOrigenId &&
+      turno.detalles.some((item) => item.legajo === legajo)
+    ) {
       list.push({ label: 'Crear serie', icon: 'repeat-outline', onPress: () => crearSerie(turno) });
     }
     if (turno.estado === 'PENDIENTE') {

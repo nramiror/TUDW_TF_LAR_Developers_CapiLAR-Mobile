@@ -42,6 +42,9 @@ export interface Turno {
   horaInicio: string;
   horaFin: string;
   estado: EstadoTurno;
+  // F05: la serie a la que pertenece y la serie que empezó (null si no). Con alguno de los dos no se crea otra serie
+  serieId?: number | null;
+  serieOrigenId?: number | null;
   // Cuándo el cliente confirmó que viene (desde la app o el recordatorio); null si no confirmó. Se borra al reprogramar
   asistenciaConfirmadaEn: string | null;
   metodoPago: MetodoPago | null;

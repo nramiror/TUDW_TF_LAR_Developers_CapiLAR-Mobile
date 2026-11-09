@@ -56,7 +56,7 @@ type Params = {
   horaInicio: string;
 };
 
-// F05: el profesional repite el servicio de un turno CONFIRMADO suyo, a la misma hora, cada tantos días y hasta
+// F05: el profesional repite el servicio de un turno suyo CONFIRMADO o COMPLETADO, a la misma hora, cada tantos días y hasta
 // 60 días desde hoy. Antes de crearla ve qué pasa en cada fecha (vista previa del back)
 export default function SerieNueva() {
   const params = useLocalSearchParams<Params>();
