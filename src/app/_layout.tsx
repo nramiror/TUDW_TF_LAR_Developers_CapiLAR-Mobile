@@ -62,6 +62,7 @@ export default function RootLayout() {
         <Stack.Screen name="escanear" options={{ headerShown: true, title: 'Escanear QR' }} />
         <Stack.Screen name="articulo/[articuloId]" options={{ headerShown: true, title: 'Producto' }} />
         <Stack.Screen name="movimiento-nuevo" options={{ headerShown: true, title: 'Registrar movimiento' }} />
+        <Stack.Screen name="articulo-nuevo" options={{ headerShown: true, title: 'Nuevo artículo' }} />
       </Stack>
     </AuthProvider>
   );
