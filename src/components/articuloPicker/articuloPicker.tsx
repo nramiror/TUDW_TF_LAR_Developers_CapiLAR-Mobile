@@ -1,11 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { coincideBusqueda, formatEnvases, formatMarca, formatPeso, getArticulosRequest } from '@/api/articulos';
-import type { Articulo } from '@/api/articulos';
+import {
+  coincideBusqueda,
+  createArticuloRequest,
+  createMarcaRequest,
+  formatEnvases,
+  formatMarca,
+  formatPeso,
+  getArticulosRequest,
+  getMarcasRequest,
+  idRepetido,
+  porMarca,
+  sinIdRepetido,
+} from '@/api/articulos';
+import type { Articulo, ArticuloData, Marca, MarcaData } from '@/api/articulos';
 import { ApiError } from '@/api/client';
+import { ArticuloForm } from '@/components/articuloForm/articuloForm';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { TextField } from '@/components/textField/textField';
@@ -21,7 +34,8 @@ interface ArticuloPickerProps {
 }
 
 // F11, desde la ficha técnica: elegir un producto del stock para un insumo. Solo los de uso en el salón (SALON o AMBOS),
-// que son los que el back acepta en una ficha. La lista se pide al abrir, así el stock está al día
+// que son los que el back acepta en una ficha. La lista se pide al abrir, así el stock está al día.
+// Si el producto no está, se crea ahí mismo (alta rápida, como en la web) y queda elegido
 export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerProps) => {
   const { token } = useAuth();
   const [articulos, setArticulos] = useState<Articulo[]>([]);
@@ -29,11 +43,19 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
   const [error, setError] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [intento, setIntento] = useState(0);
+  // Alta rápida: el formulario reemplaza a la lista, con lo buscado como nombre
+  const [creando, setCreando] = useState<string | null>(null);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorAlta, setErrorAlta] = useState('');
+  // El repetido del 409, solo si se puede usar en una ficha (está en esta lista: SALON o AMBOS)
+  const [existente, setExistente] = useState<Articulo | null>(null);
 
   useEffect(() => {
     if (!visible || !token) return;
     let cancelled = false;
     setBusqueda('');
+    setCreando(null);
     setIsLoading(true);
     setError('');
     getArticulosRequest(token, 'SALON')
@@ -44,6 +66,45 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
       cancelled = true;
     };
   }, [visible, token, intento]);
+
+  const abrirAlta = () => {
+    setCreando(busqueda.trim());
+    setErrorAlta('');
+    setExistente(null);
+    if (!token) return;
+    getMarcasRequest(token)
+      .then(setMarcas)
+      .catch((err) => setErrorAlta(errorMessage(err)));
+  };
+
+  const crearMarca = async (data: MarcaData) => {
+    const nueva = await createMarcaRequest(token ?? '', data);
+    setMarcas((prev) => [...prev, nueva].sort(porMarca));
+    return nueva;
+  };
+
+  const crear = async (data: ArticuloData) => {
+    if (!token) return;
+    setIsSaving(true);
+    setErrorAlta('');
+    setExistente(null);
+    try {
+      const creado = await createArticuloRequest(token, data);
+      setArticulos((prev) => [...prev, creado]);
+      onSelect(creado);
+      Alert.alert('Artículo creado', `${creado.nombre} ya está en el stock.`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const id = idRepetido(err.message);
+        setExistente(articulos.find((articulo) => articulo.id === id) ?? null);
+        setErrorAlta(sinIdRepetido(err.message));
+      } else {
+        setErrorAlta(errorMessage(err));
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const visibles = useMemo(() => articulos.filter((articulo) => coincideBusqueda(articulo, busqueda)), [articulos, busqueda]);
 
@@ -58,9 +119,61 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
     </View>
   ) : (
     <Text style={styles.detail}>
-      {articulos.length === 0 ? 'No hay productos de uso en el salón cargados en el stock.' : 'No encontramos productos con esa búsqueda.'}
+      {articulos.length === 0
+        ? 'Todavía no hay productos de uso en el salón. Escribí el nombre en el buscador para crearlo.'
+        : 'No encontramos productos con esa búsqueda.'}
     </Text>
   );
+
+  // Siempre que haya texto, aunque haya resultados: buscando "tintura" aparece la 7.1, pero se puede crear la 8.0
+  const crearItem =
+    busqueda.trim() && !isLoading && !error ? (
+      <Pressable
+        onPress={abrirAlta}
+        style={({ pressed }) => [styles.crear, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Crear artículo ${busqueda.trim()}`}
+      >
+        <Ionicons name="add-circle-outline" size={20} color={colors.violet} />
+        <Text style={styles.crearText}>Crear artículo: «{busqueda.trim()}»</Text>
+      </Pressable>
+    ) : null;
+
+  if (creando !== null) {
+    return (
+      <Modal visible={visible} animationType="slide" onRequestClose={() => !isSaving && setCreando(null)}>
+        <SafeAreaView style={styles.safe}>
+          <View style={[styles.header, styles.headerAlta]}>
+            <Pressable onPress={() => setCreando(null)} disabled={isSaving} hitSlop={8} accessibilityRole="button" accessibilityLabel="Volver a la lista">
+              <Ionicons name="arrow-back" size={24} color={colors.black} />
+            </Pressable>
+            <Text style={[styles.title, styles.flex]}>Nuevo artículo</Text>
+          </View>
+          <KeyboardAvoidingView style={styles.flex} behavior="padding">
+            <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+              <ArticuloForm
+                rapido
+                nombreInicial={creando}
+                marcas={marcas}
+                onCrearMarca={crearMarca}
+                onSubmit={crear}
+                onCancel={() => setCreando(null)}
+                isLoading={isSaving}
+                error={errorAlta}
+                errorAction={
+                  existente && (
+                    <Button variant="secundario" onPress={() => onSelect(existente)}>
+                      {`Usar el que ya existe: ${existente.nombre}${existente.tonalidad ? ` · ${existente.tonalidad}` : ''} (${formatMarca(existente.marca)})`}
+                    </Button>
+                  )
+                }
+              />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -103,6 +216,8 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
             </Pressable>
           )}
           ListEmptyComponent={empty}
+          ListFooterComponent={crearItem}
+          ListFooterComponentStyle={visibles.length > 0 ? styles.footer : undefined}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
@@ -158,6 +273,32 @@ const styles = StyleSheet.create({
   },
   warning: {
     color: colors.warning,
+  },
+  crear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.violet,
+  },
+  crearText: {
+    flex: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.violet,
+  },
+  headerAlta: {
+    justifyContent: 'flex-start',
+    gap: spacing.sm,
+  },
+  footer: {
+    marginTop: spacing.sm,
+  },
+  flex: {
+    flex: 1,
   },
   separator: {
     height: spacing.sm,
