@@ -2,11 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { NIVEL_LABEL, TIPO_DE_PELO_LABEL, UNIDAD_LABEL, VOLUMEN_LABEL } from '@/api/fichas';
+import { NIVEL_LABEL, TIPO_DE_PELO_LABEL, UNIDAD_LABEL, VOLUMEN_LABEL, insumosDeFicha, totalDeProductos } from '@/api/fichas';
 import type { Ficha, FormulaInsumo } from '@/api/fichas';
 import { parseTratamientos } from '@/api/tratamientos';
 import { formatFechaLarga } from '@/api/turnos';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
+import { TotalProductos } from '@/components/totalProductos/totalProductos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -120,7 +121,7 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
               {(formula.oxidanteVolumen !== null || formula.tiempoPoseMin !== null) && (
                 <Text style={styles.detail}>
                   {[
-                    formula.oxidanteVolumen !== null && `Oxidante ${formula.oxidanteVolumen} vol.`,
+                    formula.oxidanteVolumen !== null && `Oxidante ${formula.oxidanteVolumen} vol`,
                     formula.tiempoPoseMin !== null && `Pose ${formula.tiempoPoseMin} min`,
                   ]
                     .filter(Boolean)
@@ -151,6 +152,8 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
             </Text>
           </View>
         )}
+        {/* El costo real se guarda al completar el turno */}
+        {ficha.cerradaEn && <TotalProductos {...totalDeProductos(insumosDeFicha(ficha))} />}
       </Section>
 
       <Section title="Fotos">
