@@ -143,6 +143,13 @@ export const acceptRescheduleRequest = (token: string, id: number) =>
 export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =>
   apiFetch<Turno>(`/turnos/${id}/cancelar`, { method: 'PATCH', body: motivo ? { motivo } : {}, token });
 
+// F12: lo que se cobró en un turno completado (suma de los precioFinal), o null si no se completó.
+// Los completados antes de F12 también lo tienen: la migración les copió el precio base
+export const totalCobrado = (turno: Turno) =>
+  turno.estado === 'COMPLETADO' && turno.detalles.every((detalle) => detalle.precioFinal != null)
+    ? turno.detalles.reduce((suma, detalle) => suma + Number(detalle.precioFinal), 0)
+    : null;
+
 // F12: lo cobrado por cada servicio (los que no van se cobran a su precioBase) y el método de pago.
 // precioFinal no se puede cambiar después de completar
 export interface CompletarTurnoData {

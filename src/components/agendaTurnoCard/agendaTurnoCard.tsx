@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatAlergias } from '@/api/alergias';
-import { formatFechaLarga } from '@/api/turnos';
+import { formatPrice } from '@/api/services';
+import { METODO_PAGO_LABEL, formatFechaLarga, totalCobrado } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 
@@ -85,6 +86,13 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
         </View>
       ))}
 
+      {totalCobrado(turno) !== null && (
+        <Text style={styles.cobrado}>
+          Cobrado {formatPrice(totalCobrado(turno) ?? 0)}
+          {turno.metodoPago ? ` · ${METODO_PAGO_LABEL[turno.metodoPago]}` : ''}
+        </Text>
+      )}
+
       {turno.estado === 'CANCELADO' && turno.motivo ? <Text style={styles.note}>Motivo: {turno.motivo}</Text> : null}
       {turno.estado === 'RECHAZADO' && turno.motivo ? <Text style={styles.note}>Motivo (interno): {turno.motivo}</Text> : null}
       {turno.estado === 'REPROGRAMADO' && <Text style={styles.note}>Le propusiste este horario: se confirma cuando lo acepte.</Text>}
@@ -156,6 +164,11 @@ const styles = StyleSheet.create({
   confirmed: {
     fontFamily: fonts.bodyMedium,
     color: colors.success,
+  },
+  cobrado: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.black,
   },
   serie: {
     fontFamily: fonts.bodyMedium,

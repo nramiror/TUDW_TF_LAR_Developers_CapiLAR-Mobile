@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { formatMarca } from '@/api/articulos';
+import { formatMarca, getArticulosRequest } from '@/api/articulos';
 import type { Articulo } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import {
@@ -14,9 +14,12 @@ import {
   TIPO_DE_PELO_LABEL,
   UNIDAD_LABEL,
   VOLUMEN_LABEL,
+  ZONAS_FORMULA,
+  costoDeInsumo,
   createFichaRequest,
   deleteFichaPhotoRequest,
   getFichaRequest,
+  totalDeProductos,
   updateFichaRequest,
   uploadFichaPhotoRequest,
 } from '@/api/fichas';
@@ -33,6 +36,7 @@ import type {
   VolumenDePelo,
 } from '@/api/fichas';
 import { parseTratamientos, serializeTratamientos } from '@/api/tratamientos';
+import { formatPrice } from '@/api/services';
 import { formatFechaLarga } from '@/api/turnos';
 import { ArticuloPicker } from '@/components/articuloPicker/articuloPicker';
 import { Button } from '@/components/button/button';
@@ -42,6 +46,7 @@ import { FichaView, formatInsumo } from '@/components/fichaView/fichaView';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { TextField } from '@/components/textField/textField';
+import { TotalProductos } from '@/components/totalProductos/totalProductos';
 import {
   TratamientosField,
   filaVacia,
@@ -71,7 +76,9 @@ interface InsumoForm {
 }
 
 interface FormulaForm {
+  // La zona elegida de la lista o, con zonaOtra, lo que se escribió a mano. "" = sin indicar
   descripcion: string;
+  zonaOtra: boolean;
   // Ya no se carga: el oxidante es un insumo más del stock. Se guarda el de las fichas viejas para reenviarlo
   // sin cambios (PATCH reemplaza todas las fórmulas y si no va, se pierde)
   oxidanteVolumen: number | null;
@@ -94,7 +101,7 @@ interface FichaForm {
 }
 
 const EMPTY_INSUMO: InsumoForm = { articuloId: null, comoTexto: false, producto: '', marca: '', tono: '', cantidad: '', unidad: null };
-const EMPTY_FORMULA: FormulaForm = { descripcion: '', oxidanteVolumen: null, tiempoPoseMin: '', insumos: [EMPTY_INSUMO] };
+const EMPTY_FORMULA: FormulaForm = { descripcion: '', zonaOtra: false, oxidanteVolumen: null, tiempoPoseMin: '', insumos: [EMPTY_INSUMO] };
 
 // Mismo límite que el back para tratamientosPrevios
 const MAX_TEXTO = 1000;
@@ -115,6 +122,8 @@ const toForm = (ficha: Ficha | null): FichaForm => {
     indicacionesCliente: ficha?.indicacionesCliente ?? '',
     formulas: (ficha?.formulas ?? []).map((formula) => ({
       descripcion: formula.descripcion ?? '',
+      // Un texto viejo que no está en la lista queda en "Otra", para no perderlo
+      zonaOtra: Boolean(formula.descripcion) && !ZONAS_FORMULA.includes(formula.descripcion ?? ''),
       oxidanteVolumen: formula.oxidanteVolumen,
       tiempoPoseMin: numberText(formula.tiempoPoseMin),
       insumos: formula.insumos.map((insumo) => ({
@@ -277,6 +286,15 @@ export default function FichaTecnica() {
   const [busyTipo, setBusyTipo] = useState<MomentoFoto | null>(null);
   // Insumo para el que se está eligiendo un producto del stock
   const [pickerFor, setPickerFor] = useState<{ formula: number; insumo: number } | null>(null);
+  // Artículos del salón, para el costo de cada producto. Si no cargan, la ficha anda igual sin costos
+  const [articulos, setArticulos] = useState<Articulo[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    getArticulosRequest(token, 'SALON')
+      .then(setArticulos)
+      .catch(() => setArticulos([]));
+  }, [token]);
 
   // Cada servicio del turno trae el id de su ficha: sin ficha, el formulario arranca vacío
   const load = useCallback(async () => {
@@ -440,6 +458,22 @@ export default function FichaTecnica() {
     }
   };
 
+  // Lo que cuesta lo usado de un producto del stock, con el precio de hoy (se guarda al completar el turno)
+  const costoDeFila = (insumo: InsumoForm) => {
+    const articulo = articulos.find((a) => a.id === insumo.articuloId);
+    const cantidad = Number(insumo.cantidad.replace(',', '.')) || 0;
+    return articulo && cantidad > 0 ? formatPrice(costoDeInsumo(articulo, cantidad)) : null;
+  };
+
+  // La ficha que se edita está abierta: el total es estimado y los productos de texto no suman
+  const totalProductos = totalDeProductos(
+    form.formulas
+      .flatMap((formula) => formula.insumos)
+      .filter((insumo) => insumo.articuloId !== null || insumo.comoTexto)
+      .map((insumo) => ({ articuloId: insumo.articuloId, cantidad: insumo.cantidad.replace(',', '.') })),
+    articulos,
+  );
+
   const removePhoto = (foto: FotoFicha) => {
     if (!ficha) return;
     Alert.alert('Quitar foto', '¿Querés quitar esta foto de la ficha?', [
@@ -523,13 +557,38 @@ export default function FichaTecnica() {
                 <Ionicons name="trash-outline" size={20} color={colors.error} />
               </Pressable>
             </View>
-            <TextField
-              label="Descripción"
-              placeholder="ej. Raíz, medios y puntas"
-              maxLength={500}
-              value={formula.descripcion}
-              onChangeText={(text) => updateFormula(index, { descripcion: text })}
-            />
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Zona</Text>
+              <View style={styles.chips}>
+                <Chip
+                  label="Sin indicar"
+                  selected={!formula.zonaOtra && !formula.descripcion}
+                  onPress={() => updateFormula(index, { zonaOtra: false, descripcion: '' })}
+                />
+                {ZONAS_FORMULA.map((zona) => (
+                  <Chip
+                    key={zona}
+                    label={zona}
+                    selected={!formula.zonaOtra && formula.descripcion === zona}
+                    onPress={() => updateFormula(index, { zonaOtra: false, descripcion: zona })}
+                  />
+                ))}
+                <Chip
+                  label="Otra"
+                  selected={formula.zonaOtra}
+                  onPress={() => !formula.zonaOtra && updateFormula(index, { zonaOtra: true, descripcion: '' })}
+                />
+              </View>
+            </View>
+            {formula.zonaOtra && (
+              <TextField
+                label="¿Qué zona?"
+                placeholder="ej. Contorno"
+                maxLength={500}
+                value={formula.descripcion}
+                onChangeText={(text) => updateFormula(index, { descripcion: text })}
+              />
+            )}
             <TextField
               label="Pose (min)"
               placeholder="ej. 35"
@@ -540,7 +599,7 @@ export default function FichaTecnica() {
             />
             {formula.oxidanteVolumen !== null && (
               <Text style={styles.hint}>
-                Oxidante {formula.oxidanteVolumen} vol. (cargado antes de que el oxidante se eligiera del stock: se mantiene).
+                Oxidante {formula.oxidanteVolumen} vol
               </Text>
             )}
 
@@ -563,7 +622,9 @@ export default function FichaTecnica() {
                       <Ionicons name="cube-outline" size={20} color={colors.violet} />
                       <View style={styles.flex}>
                         <Text style={styles.stockNombre}>{insumo.producto}</Text>
-                        <Text style={styles.detail}>{[insumo.marca, insumo.tono && `Tono ${insumo.tono}`].filter(Boolean).join(' · ')}</Text>
+                        <Text style={styles.detail}>
+                          {[insumo.marca, insumo.tono && `Tono ${insumo.tono}`, costoDeFila(insumo)].filter(Boolean).join(' · ')}
+                        </Text>
                       </View>
                     </View>
                     <TextField
@@ -612,6 +673,7 @@ export default function FichaTecnica() {
             )}
           </View>
         ))}
+        <TotalProductos {...totalProductos} />
         {form.formulas.length < MAX_FORMULAS && (
           <Button variant="secundario" onPress={() => setFormulas((formulas) => [...formulas, EMPTY_FORMULA])}>
             Agregar fórmula
