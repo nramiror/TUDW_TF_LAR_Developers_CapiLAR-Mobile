@@ -96,7 +96,7 @@ export default function Series() {
     </View>
   ) : (
     <Text style={styles.hint}>
-      Todavía no tenés series. Para crear una, abrí un turno confirmado en tu agenda y elegí &quot;Crear serie&quot;.
+      Todavía no tenés series. Para crear una, abrí un turno confirmado o completado en tu agenda y elegí &quot;Crear serie&quot;.
     </Text>
   );
 

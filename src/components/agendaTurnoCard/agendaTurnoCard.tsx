@@ -49,6 +49,12 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
       <Text style={styles.client}>
         {turno.cliente.nombre} {turno.cliente.apellido}
       </Text>
+      {turno.serieId || turno.serieOrigenId ? (
+        <View style={styles.row}>
+          <Ionicons name="repeat-outline" size={16} color={colors.violet} />
+          <Text style={[styles.detail, styles.serie]}>{turno.serieId ? 'Turno de una serie' : 'Empezó una serie'}</Text>
+        </View>
+      ) : null}
       {turno.estado === 'CONFIRMADO' && turno.asistenciaConfirmadaEn ? (
         <View style={styles.row}>
           <Ionicons name="checkmark-circle" size={16} color={colors.success} />
@@ -150,6 +156,10 @@ const styles = StyleSheet.create({
   confirmed: {
     fontFamily: fonts.bodyMedium,
     color: colors.success,
+  },
+  serie: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.violet,
   },
   unverified: {
     color: colors.warning,
