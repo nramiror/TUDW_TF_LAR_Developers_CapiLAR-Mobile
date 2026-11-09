@@ -11,6 +11,13 @@ export type EstadoTurno = 'PENDIENTE' | 'CONFIRMADO' | 'REPROGRAMADO' | 'COMPLET
 
 export type MetodoPago = 'EFECTIVO' | 'DEBITO' | 'CREDITO' | 'TRANSFERENCIA';
 
+export const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  DEBITO: 'Débito',
+  CREDITO: 'Crédito',
+  TRANSFERENCIA: 'Transferencia',
+};
+
 // Un servicio del turno, con su profesional y su propio horario (se hacen uno después del otro)
 export interface TurnoDetalle {
   id: number;
@@ -22,6 +29,8 @@ export interface TurnoDetalle {
   horaFin: string;
   // Precio al reservar, como texto ("15000.00")
   precioBase: string;
+  // F12: lo que se cobró, como texto ("18000"). null hasta que se completa el turno
+  precioFinal?: string | null;
   // F08: ficha técnica de este servicio (null si no tiene). Solo en los turnos del salón, no en /turnos/mios
   fichaId?: number | null;
 }
@@ -131,10 +140,21 @@ export const acceptRescheduleRequest = (token: string, id: number) =>
 export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =>
   apiFetch<Turno>(`/turnos/${id}/cancelar`, { method: 'PATCH', body: motivo ? { motivo } : {}, token });
 
+// F12: lo cobrado por cada servicio (los que no van se cobran a su precioBase) y el método de pago.
+// precioFinal no se puede cambiar después de completar
+export interface CompletarTurnoData {
+  detalles: { turnoDetalleId: number; precioFinal: number }[];
+  metodoPago: MetodoPago;
+}
+
 // Cierra las fichas y descuenta del stock sus insumos con artículo. Sin stock suficiente se descuenta igual:
 // sinStock trae los artículos que quedaron por debajo de 0 (vacío si ninguno)
-export const completeTurnoRequest = (token: string, id: number) =>
-  apiFetch<Turno & { sinStock: { id: number; nombre: string; stock: string }[] }>(`/turnos/${id}/completar`, { method: 'PATCH', token });
+export const completeTurnoRequest = (token: string, id: number, data: CompletarTurnoData) =>
+  apiFetch<Turno & { sinStock: { id: number; nombre: string; stock: string }[] }>(`/turnos/${id}/completar`, {
+    method: 'PATCH',
+    body: data,
+    token,
+  });
 
 // PROFESIONAL: el cliente no vino (CONFIRMADO -> AUSENTE), desde la hora de fin del turno
 export const markAbsentRequest = (token: string, id: number) =>

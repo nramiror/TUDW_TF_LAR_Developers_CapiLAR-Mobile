@@ -24,10 +24,11 @@ import {
   toIsoDate,
   yaTermino,
 } from '@/api/turnos';
-import type { Turno } from '@/api/turnos';
+import type { CompletarTurnoData, Turno } from '@/api/turnos';
 import { AgendaTurnoCard } from '@/components/agendaTurnoCard/agendaTurnoCard';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
+import { CompletarModal } from '@/components/completarModal/completarModal';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Greeting } from '@/components/greeting/greeting';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
@@ -69,6 +70,8 @@ export default function Agenda() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [opcionesDe, setOpcionesDe] = useState<Turno | null>(null);
   const [motivoPedido, setMotivoPedido] = useState<MotivoPedido | null>(null);
+  // Turno que se está completando (modal con lo cobrado)
+  const [completando, setCompletando] = useState<Turno | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !legajo) return;
@@ -151,32 +154,31 @@ export default function Agenda() {
     if (ok) setMotivoPedido(null);
   };
 
-  const completar = (turno: Turno) => {
-    Alert.alert('Completar turno', `¿Terminaste el turno de ${turno.cliente.nombre} ${turno.cliente.apellido}?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, completar',
-        onPress: async () => {
-          let sinStock: { nombre: string; stock: string }[] = [];
-          const ok = await run(
-            turno,
-            async () => {
-              const result = await completeTurnoRequest(token, turno.id);
-              sinStock = result.sinStock ?? [];
-              return result;
-            },
-            'No se pudo completar',
-          );
-          // F11: los insumos de la ficha se descuentan igual aunque no alcance el stock, pero se avisa
-          if (ok && sinStock.length > 0) {
-            Alert.alert(
-              'Stock en negativo',
-              `Con lo que usaste quedaron por debajo de 0:\n${sinStock.map((item) => `• ${item.nombre}: ${formatEnvases(item.stock)}`).join('\n')}\n\nRevisá si falta registrar algún ingreso en Stock.`,
-            );
-          }
-        },
+  // F12: se abre el modal con lo cobrado y el método de pago; al confirmar se completa
+  const completar = (turno: Turno) => setCompletando(turno);
+
+  const confirmarCompletar = async (data: CompletarTurnoData) => {
+    if (!completando) return;
+    const turno = completando;
+    let sinStock: { nombre: string; stock: string }[] = [];
+    const ok = await run(
+      turno,
+      async () => {
+        const result = await completeTurnoRequest(token, turno.id, data);
+        sinStock = result.sinStock ?? [];
+        return result;
       },
-    ]);
+      'No se pudo completar',
+    );
+    if (!ok) return;
+    setCompletando(null);
+    // F11: los insumos de la ficha se descuentan igual aunque no alcance el stock, pero se avisa
+    if (sinStock.length > 0) {
+      Alert.alert(
+        'Stock en negativo',
+        `Con lo que usaste quedaron por debajo de 0:\n${sinStock.map((item) => `• ${item.nombre}: ${formatEnvases(item.stock)}`).join('\n')}\n\nRevisá si falta registrar algún ingreso en Stock.`,
+      );
+    }
   };
 
   const marcarAusente = (turno: Turno) => {
@@ -418,6 +420,12 @@ export default function Agenda() {
         onClose={() => setOpcionesDe(null)}
       />
 
+      <CompletarModal
+        turno={completando}
+        isLoading={completando !== null && busyId === completando.id}
+        onConfirm={confirmarCompletar}
+        onClose={() => setCompletando(null)}
+      />
       <ReasonModal
         visible={motivoPedido !== null}
         title={motivoPedido?.tipo === 'rechazar' ? 'Rechazar solicitud' : 'Cancelar turno'}
