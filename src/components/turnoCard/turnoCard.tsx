@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { clientePuedeCancelar, formatFechaLarga, yaTermino } from '@/api/turnos';
+import { formatPrice } from '@/api/services';
+import { clientePuedeCancelar, formatFechaLarga, totalCobrado, yaTermino } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -51,6 +52,7 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false 
           {detalle.servicio} · {detalle.profesional}
         </Text>
       ))}
+      {totalCobrado(turno) !== null && <Text style={styles.total}>Total {formatPrice(totalCobrado(turno) ?? 0)}</Text>}
 
       {turno.estado === 'CANCELADO' && turno.motivo ? <Text style={styles.note}>Motivo: {turno.motivo}</Text> : null}
       {turno.estado === 'REPROGRAMADO' && (
@@ -110,6 +112,11 @@ const styles = StyleSheet.create({
   },
   detail: {
     fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
+  total: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
     color: colors.black,
   },
