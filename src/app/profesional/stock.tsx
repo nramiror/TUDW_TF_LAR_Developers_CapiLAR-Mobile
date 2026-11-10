@@ -61,6 +61,9 @@ export default function Stock() {
   const header = (
     <View style={styles.header}>
       <Button onPress={() => router.push('/escanear')}>Escanear QR</Button>
+      <Button variant="secundario" onPress={() => router.push('/articulo-nuevo')}>
+        Nuevo artículo
+      </Button>
       <TextField
         label="Buscar"
         placeholder="Nombre, marca, tono o código"
@@ -88,7 +91,7 @@ export default function Stock() {
   ) : (
     <Text style={styles.hint}>
       {articulos.length === 0
-        ? 'Todavía no hay artículos cargados. Los da de alta el administrador desde la web.'
+        ? 'Todavía no hay artículos cargados. Tocá "Nuevo artículo" para cargar el primero.'
         : soloBajoStock && !busqueda.trim()
           ? 'No hay artículos con bajo stock.'
           : 'No encontramos artículos con esa búsqueda.'}

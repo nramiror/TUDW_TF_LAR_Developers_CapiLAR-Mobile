@@ -2,10 +2,24 @@ import { apiFetch } from './client';
 import type { UnidadInsumo } from './fichas';
 import { UNIDAD_LABEL } from './fichas';
 
-// F11: stock del salón. El PROFESIONAL ve los artículos, los busca por QR, registra movimientos y maneja el envase abierto.
-// Dar de alta, editar y dar de baja artículos es del ADMIN (web)
+// F11: stock del salón. El PROFESIONAL ve los artículos, los busca por QR, registra movimientos, maneja el envase abierto
+// y crea artículos y marcas (PWA-264). Editarlos y darlos de baja es del ADMIN (web)
 
 export type UsoArticulo = 'SALON' | 'VENTA' | 'AMBOS';
+export type TipoProducto =
+  | 'TINTURA'
+  | 'OXIDANTE'
+  | 'DECOLORANTE'
+  | 'PERMANENTE'
+  | 'SHAMPOO'
+  | 'ACONDICIONADOR'
+  | 'MASCARA'
+  | 'AMPOLLA'
+  | 'SERUM'
+  | 'PEINADO'
+  | 'PROTECTOR_TERMICO'
+  | 'KIT'
+  | 'OTRO';
 export type TipoDeposito = 'SALON' | 'DEPOSITO' | 'VITRINA';
 // COMPRA llega con proveedores (F13) y CONSUMO lo genera la ficha técnica al completar el turno: no se cargan a mano
 export type TipoMovimiento = 'COMPRA' | 'INGRESO' | 'EGRESO' | 'AJUSTE' | 'CONSUMO';
@@ -22,10 +36,42 @@ export const MOVIMIENTO_LABEL: Record<TipoMovimiento, string> = {
 };
 
 export const DEPOSITO_LABEL: Record<TipoDeposito, string> = { SALON: 'Salón', DEPOSITO: 'Depósito', VITRINA: 'Vitrina' };
+export const USO_LABEL: Record<UsoArticulo, string> = { SALON: 'Salón', VENTA: 'Venta', AMBOS: 'Salón y venta' };
+// Mismos textos que la web
+export const TIPO_PRODUCTO_LABEL: Record<TipoProducto, string> = {
+  TINTURA: 'Tintura',
+  OXIDANTE: 'Oxidante',
+  DECOLORANTE: 'Decolorante',
+  PERMANENTE: 'Permanente',
+  SHAMPOO: 'Shampoo',
+  ACONDICIONADOR: 'Acondicionador',
+  MASCARA: 'Máscara',
+  AMPOLLA: 'Ampolla',
+  SERUM: 'Sérum',
+  PEINADO: 'Peinado',
+  PROTECTOR_TERMICO: 'Protector térmico',
+  KIT: 'Kit',
+  OTRO: 'Otro',
+};
+
+// Mismos límites que CreateArticuloDto y CreateMarcaDto del back
+export const MAX_NOMBRE_ARTICULO = 150;
+export const MAX_CODIGO_ARTICULO = 30;
+export const MAX_TONALIDAD = 50;
+export const MAX_TEXTO_MARCA = 100;
+export const MAX_PRECIO = 99999999.99;
+export const MAX_STOCK = 9999999.999;
 
 // Mismos límites que CreateMovimientoDto del back
 export const MAX_MOTIVO_MOVIMIENTO = 255;
 export const MAX_COMPROBANTE = 30;
+
+// Una marca es marca + línea (ej. "L'Oréal" + "Majirel")
+export interface Marca {
+  id: number;
+  razonSocial: string;
+  linea: string | null;
+}
 
 // Los decimales llegan como texto sin ceros de más ("3.5", "15000")
 export interface Articulo {
@@ -33,7 +79,7 @@ export interface Articulo {
   nombre: string;
   codigo: string | null;
   uso: UsoArticulo;
-  tipoProducto: string;
+  tipoProducto: TipoProducto;
   // En envases, con hasta 3 decimales
   stock: string;
   stockMinAlert: string;
@@ -50,10 +96,36 @@ export interface Articulo {
   marcaId: number;
   fechaAlta: string;
   fechaBaja: string | null;
-  marca: { id: number; razonSocial: string; linea: string | null };
+  marca: Marca;
   // El envase abierto, o null si no hay ninguno
   envaseEnUso: { pesoActual: string; tipoPeso: UnidadInsumo } | null;
   bajoStock: boolean;
+}
+
+// Lo que se manda al crear un artículo
+export interface ArticuloData {
+  nombre: string;
+  codigo: string | null;
+  uso: UsoArticulo;
+  tipoProducto: TipoProducto;
+  marcaId: number;
+  // De un envase
+  precioCosto: number;
+  // Solo para VENTA y AMBOS (con SALON el back lo rechaza)
+  precioVenta?: number;
+  pesoInicial: number;
+  tipoPeso: UnidadInsumo;
+  tonalidad: string | null;
+  tipoDeposito: TipoDeposito;
+  stockMinAlert: number;
+  fechaVencimiento: string | null;
+  // Stock inicial en envases: si es mayor a 0 queda como INGRESO "Stock inicial"
+  stock: number;
+}
+
+export interface MarcaData {
+  razonSocial: string;
+  linea: string | null;
 }
 
 export interface Movimiento {
@@ -101,6 +173,26 @@ export const getArticulosRequest = (token: string, uso?: UsoArticulo) => {
 };
 
 export const getArticuloRequest = (token: string, id: number) => apiFetch<Articulo>(`/articulos/${id}`, { token });
+
+// ADMIN o PROFESIONAL. 409 si ya hay un artículo activo con ese nombre en esa marca: el mensaje termina en "(id N)"
+export const createArticuloRequest = (token: string, data: ArticuloData) =>
+  apiFetch<Articulo>('/articulos', { method: 'POST', body: data, token });
+
+// El "(id N)" del final del 409: el id del artículo repetido (no se muestra)
+const ID_REPETIDO = /\s*\(id (\d+)\)/;
+export const idRepetido = (message: string) => {
+  const id = Number(message.match(ID_REPETIDO)?.[1]);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+export const sinIdRepetido = (message: string) => message.replace(ID_REPETIDO, '');
+
+export const getMarcasRequest = (token: string) => apiFetch<Marca[]>('/marcas', { token });
+
+// ADMIN o PROFESIONAL. 409 si ya existe esa marca con esa línea
+export const createMarcaRequest = (token: string, data: MarcaData) => apiFetch<Marca>('/marcas', { method: 'POST', body: data, token });
+
+// Para sumar una marca nueva a la lista, en orden
+export const porMarca = (a: Marca, b: Marca) => formatMarca(a).localeCompare(formatMarca(b), 'es');
 
 // También devuelve los dados de baja (con fechaBaja); 404 si el código no es de ningún artículo
 export const getArticuloPorQrRequest = (token: string, codigo: string) =>
@@ -157,7 +249,7 @@ export const formatPeso = (value: string | number, unidad: UnidadInsumo) =>
   `${formatCantidad(value)} ${unidad === 'UNIDAD' && Number(value) !== 1 ? 'unidades' : UNIDAD_LABEL[unidad]}`;
 
 // "Wella Koleston Perfect"
-export const formatMarca = (marca: Articulo['marca']) => (marca.linea ? `${marca.razonSocial} ${marca.linea}` : marca.razonSocial);
+export const formatMarca = (marca: Marca) => (marca.linea ? `${marca.razonSocial} ${marca.linea}` : marca.razonSocial);
 
 // --- Búsqueda en el celular (los artículos del salón son pocos: se traen todos y se filtran mientras se escribe) ---
 

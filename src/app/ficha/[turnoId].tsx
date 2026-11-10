@@ -395,6 +395,8 @@ export default function FichaTecnica() {
   // Producto, marca, tono y unidad pasan a ser los del artículo; la cantidad que se había escrito se mantiene
   const elegirArticulo = (articulo: Articulo) => {
     if (!pickerFor) return;
+    // Uno recién creado desde el buscador se suma a la lista, para su costo
+    setArticulos((prev) => (prev.some((a) => a.id === articulo.id) ? prev : [...prev, articulo]));
     updateInsumo(pickerFor.formula, pickerFor.insumo, {
       articuloId: articulo.id,
       comoTexto: false,
