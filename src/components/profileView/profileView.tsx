@@ -8,7 +8,6 @@ import { formatAlergias } from '@/api/alergias';
 import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
-import { Button } from '@/components/button/button';
 import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
@@ -24,6 +23,24 @@ const ROL_LABEL: Record<Usuario['rol'], string> = {
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
+// Acceso del perfil (editar datos, contraseña, series...): se muestran en una grilla de 2 columnas
+export interface ProfileAction {
+  label: string;
+  icon: IconName;
+  onPress: () => void;
+}
+
+const ActionTile = ({ label, icon, onPress }: ProfileAction) => (
+  <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]} accessibilityRole="button">
+    <View style={styles.tileIcon}>
+      <Ionicons name={icon} size={20} color={colors.violet} />
+    </View>
+    <Text style={styles.tileText} numberOfLines={2}>
+      {label}
+    </Text>
+  </Pressable>
+);
+
 const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => (
   <View style={styles.row}>
     <Ionicons name={icon} size={20} color={colors.violet} />
@@ -35,12 +52,14 @@ const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value:
 );
 
 interface ProfileViewProps {
+  // Accesos propios del rol, después de "Editar mis datos" y "Cambiar contraseña"
+  actions?: ProfileAction[];
   // Secciones propias del rol, entre los datos y cerrar sesión (ej. "Mis servicios" del profesional)
   children?: ReactNode;
 }
 
 // Perfil del usuario logueado (cliente o profesional): foto, datos, editar, cerrar sesión y darse de baja
-export const ProfileView = ({ children }: ProfileViewProps) => {
+export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
   const { user, token, logout } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   if (!user) return null;
@@ -106,18 +125,24 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
         )}
       </View>
 
-      <Button variant="secundario" onPress={() => router.push('/editar-perfil')}>
-        Editar mis datos
-      </Button>
-      <Button variant="secundario" onPress={() => router.push('/cambiar-contrasena')}>
-        Cambiar contraseña
-      </Button>
+      {/* Grilla de 2 columnas en vez de botones a todo el ancho (pedido de Andrea tras la demo del 75%) */}
+      <View style={styles.grid}>
+        {[
+          { label: 'Editar mis datos', icon: 'create-outline' as const, onPress: () => router.push('/editar-perfil') },
+          { label: 'Cambiar contraseña', icon: 'key-outline' as const, onPress: () => router.push('/cambiar-contrasena') },
+          ...actions,
+        ].map((action) => (
+          <ActionTile key={action.label} {...action} />
+        ))}
+      </View>
 
       {children}
 
-      <Button variant="grey" onPress={confirmLogout} disabled={isDeleting}>
-        Cerrar sesión
-      </Button>
+      {/* Link con ícono en vez de botón: al lado de la grilla, un botón suelto se veía raro */}
+      <Pressable onPress={confirmLogout} disabled={isDeleting} hitSlop={8} accessibilityRole="button" style={styles.logout}>
+        <Ionicons name="log-out-outline" size={20} color={colors.grey} />
+        <Text style={styles.logoutText}>Cerrar sesión</Text>
+      </Pressable>
 
       <Pressable onPress={confirmDelete} disabled={isDeleting} hitSlop={8} accessibilityRole="button" style={styles.delete}>
         <Text style={styles.deleteText}>{isDeleting ? 'Dando de baja…' : 'Darme de baja'}</Text>
@@ -170,9 +195,58 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.md,
     color: colors.black,
   },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  // Dos por fila: cada una ocupa casi la mitad y el gap completa el resto. Ícono a la izquierda y texto al lado
+  tile: {
+    flexGrow: 1,
+    flexBasis: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.sm + 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  tilePressed: {
+    backgroundColor: colors.surface,
+  },
+  tileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  tileText: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.xs + 1,
+    color: colors.black,
+  },
+  logout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  logoutText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
   delete: {
     alignSelf: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
   },
   deleteText: {
