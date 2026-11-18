@@ -44,6 +44,14 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": false,
+          "savePhotosPermission": "CapiLAR guarda en tu galería la foto de Probá un color.",
+          "granularPermissions": ["photo"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
