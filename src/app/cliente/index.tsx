@@ -69,12 +69,19 @@ export default function Reservar() {
               onPress={() => router.push('/probar-color')}
               style={({ pressed }) => pressed && styles.pressed}
               accessibilityRole="button"
-              accessibilityLabel="Probá un color"
+              accessibilityLabel="Probá un color con inteligencia artificial"
             >
               <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.colorCard}>
                 <Ionicons name="color-palette-outline" size={28} color={colors.white} />
                 <View style={styles.colorTexts}>
-                  <Text style={styles.colorTitle}>Probá un color</Text>
+                  <View style={styles.colorTitleRow}>
+                    <Text style={styles.colorTitle}>Probá un color</Text>
+                    {/* Pedido de Linda (demo del 75%): que se vea que la función usa IA */}
+                    <View style={styles.aiBadge}>
+                      <Ionicons name="sparkles" size={12} color={colors.violet} />
+                      <Text style={styles.aiBadgeText}>IA</Text>
+                    </View>
+                  </View>
                   <Text style={styles.colorText}>Subí una selfie y mirá cómo te quedaría antes de reservar.</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={22} color={colors.white} />
@@ -118,6 +125,25 @@ const styles = StyleSheet.create({
   colorTexts: {
     flex: 1,
     gap: 2,
+  },
+  colorTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  aiBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
+  },
+  aiBadgeText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.xs,
+    color: colors.violet,
   },
   colorTitle: {
     fontFamily: fonts.subtitle,
