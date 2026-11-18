@@ -10,21 +10,25 @@ interface ButtonProps {
   onPress?: () => void;
   // Mismos nombres que el Button de la web
   variant?: 'primario' | 'secundario' | 'grey';
+  // sm: acciones dentro de una tarjeta (ej. "Cancelar turno"); no ocupa todo el ancho si se alinea con style
+  size?: 'md' | 'sm';
   disabled?: boolean;
   // Muestra un spinner y no deja tocar (mientras se espera al back)
   isLoading?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-// primario: fondo degradado. secundario: borde degradado y fondo blanco. grey: borde y texto gris
-export const Button = ({ children, onPress, variant = 'primario', disabled = false, isLoading = false, style }: ButtonProps) => {
+// primario: fondo degradado. secundario: borde degradado y fondo blanco. grey: borde y texto gris.
+// Sin sombra y con borde fino (pedido de Andrea tras la demo del 75%: los botones se veían toscos)
+export const Button = ({ children, onPress, variant = 'primario', size = 'md', disabled = false, isLoading = false, style }: ButtonProps) => {
   const isDisabled = disabled || isLoading;
-  const textColor = variant === 'primario' ? colors.white : variant === 'grey' ? colors.grey : colors.black;
+  const textColor = variant === 'primario' ? colors.white : variant === 'grey' ? colors.grey : colors.violet;
+  const sizeStyle = size === 'sm' ? styles.innerSm : styles.innerMd;
 
   const content = isLoading ? (
-    <ActivityIndicator color={textColor} />
+    <ActivityIndicator color={textColor} size="small" />
   ) : (
-    <Text style={[styles.text, { color: textColor }]}>{children}</Text>
+    <Text style={[styles.text, size === 'sm' && styles.textSm, { color: textColor }]}>{children}</Text>
   );
 
   return (
@@ -36,14 +40,14 @@ export const Button = ({ children, onPress, variant = 'primario', disabled = fal
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed, isDisabled && styles.disabled, style]}
     >
       {variant === 'grey' ? (
-        <View style={[styles.inner, styles.grey]}>{content}</View>
+        <View style={[styles.inner, sizeStyle, styles.grey]}>{content}</View>
       ) : (
         <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.gradient}>
           {variant === 'primario' ? (
-            <View style={styles.inner}>{content}</View>
+            <View style={[styles.inner, sizeStyle]}>{content}</View>
           ) : (
-            // El borde degradado es el padding de 2 px que deja ver el degradado alrededor
-            <View style={[styles.inner, styles.secondaryInner]}>{content}</View>
+            // El borde degradado es el padding que deja ver el degradado alrededor
+            <View style={[styles.inner, sizeStyle, styles.secondaryInner]}>{content}</View>
           )}
         </LinearGradient>
       )}
@@ -51,14 +55,15 @@ export const Button = ({ children, onPress, variant = 'primario', disabled = fal
   );
 };
 
+const BORDE = 1.5;
+
 const styles = StyleSheet.create({
   pressable: {
-    borderRadius: radius.sm,
-    elevation: 2,
+    borderRadius: radius.md,
   },
   pressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+    opacity: 0.85,
   },
   disabled: {
     opacity: 0.5,
@@ -66,30 +71,41 @@ const styles = StyleSheet.create({
   // flexGrow: si el botón se estira (por ejemplo, junto a otro más alto en una fila), el fondo lo acompaña
   gradient: {
     flexGrow: 1,
-    borderRadius: radius.sm,
-    padding: 2,
+    borderRadius: radius.md,
+    padding: BORDE,
   },
   inner: {
     flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md - BORDE,
+  },
+  // 44 de alto: lo mínimo cómodo para el dedo
+  innerMd: {
     minHeight: 44,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm - 1,
+  },
+  innerSm: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   secondaryInner: {
     backgroundColor: colors.white,
   },
   grey: {
-    borderWidth: 2,
-    borderColor: colors.greyLight,
+    borderWidth: BORDE,
+    borderColor: colors.border,
     backgroundColor: colors.white,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
   },
   text: {
     textAlign: 'center',
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
+  },
+  textSm: {
+    fontSize: fontSizes.sm,
   },
 });

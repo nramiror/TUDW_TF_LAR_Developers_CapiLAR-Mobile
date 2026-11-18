@@ -30,6 +30,8 @@ export const fonts = {
 } as const;
 
 export const fontSizes = {
+  // Etiquetas en mayúsculas (ej. "Confirmación inmediata")
+  xxs: 10,
   xs: 12,
   sm: 14,
   md: 16,

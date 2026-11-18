@@ -11,6 +11,9 @@ export const colors = {
   surface: '#F8F3FC',
   border: '#E5E5E5',
   greyLight: '#A3A3A3',
+  // Durazno suave para etiquetas (bg-capilar-peach/25 y text-orange-800 en la web: "Necesita evaluación")
+  peachSurface: '#FEE8DC',
+  peachText: '#9A3412',
 
   // Estados (alertas, validaciones)
   success: '#16A34A',

@@ -1,18 +1,15 @@
 import { router } from 'expo-router';
 
-import { Button } from '@/components/button/button';
 import { ProfileView } from '@/components/profileView/profileView';
 
 // Datos del cliente y cerrar sesión (F01), sus series de turnos (F05) y su historial capilar (F08)
 export default function PerfilCliente() {
   return (
-    <ProfileView>
-      <Button variant="secundario" onPress={() => router.push('/mis-series')}>
-        Mis series de turnos
-      </Button>
-      <Button variant="secundario" onPress={() => router.push('/mis-fichas')}>
-        Mi historial capilar
-      </Button>
-    </ProfileView>
+    <ProfileView
+      actions={[
+        { label: 'Mis series de turnos', icon: 'repeat-outline', onPress: () => router.push('/mis-series') },
+        { label: 'Mi historial capilar', icon: 'document-text-outline', onPress: () => router.push('/mis-fichas') },
+      ]}
+    />
   );
 }

@@ -71,20 +71,25 @@ export default function Reservar() {
               accessibilityRole="button"
               accessibilityLabel="Probá un color con inteligencia artificial"
             >
-              <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.colorCard}>
-                <Ionicons name="color-palette-outline" size={28} color={colors.white} />
-                <View style={styles.colorTexts}>
-                  <View style={styles.colorTitleRow}>
-                    <Text style={styles.colorTitle}>Probá un color</Text>
-                    {/* Pedido de Linda (demo del 75%): que se vea que la función usa IA */}
-                    <View style={styles.aiBadge}>
-                      <Ionicons name="sparkles" size={12} color={colors.violet} />
-                      <Text style={styles.aiBadgeText}>IA</Text>
-                    </View>
+              {/* Pedido de Andrea: clara por dentro y con el degradado solo en el borde (el padding deja ver el degradado) */}
+              <LinearGradient colors={gradient.colors} start={gradient.start} end={gradient.end} style={styles.colorBorder}>
+                <View style={styles.colorCard}>
+                  <View style={styles.colorIcon}>
+                    <Ionicons name="color-palette-outline" size={24} color={colors.violet} />
                   </View>
-                  <Text style={styles.colorText}>Subí una selfie y mirá cómo te quedaría antes de reservar.</Text>
+                  <View style={styles.colorTexts}>
+                    <View style={styles.colorTitleRow}>
+                      <Text style={styles.colorTitle}>Probá un color</Text>
+                      {/* Pedido de Linda (demo del 75%): que se vea que la función usa IA */}
+                      <View style={styles.aiBadge}>
+                        <Ionicons name="sparkles" size={12} color={colors.white} />
+                        <Text style={styles.aiBadgeText}>IA</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.colorText}>Subí una selfie y mirá cómo te quedaría antes de reservar.</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.violet} />
                 </View>
-                <Ionicons name="chevron-forward" size={22} color={colors.white} />
               </LinearGradient>
             </Pressable>
             <Text style={styles.hint}>Elegí un servicio para ver los días y horarios disponibles.</Text>
@@ -115,12 +120,25 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.grey,
   },
+  colorBorder: {
+    padding: 1.5,
+    borderRadius: radius.md,
+  },
   colorCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.md - 1.5,
+    backgroundColor: colors.surface,
+  },
+  colorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
   },
   colorTexts: {
     flex: 1,
@@ -138,22 +156,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 1,
     borderRadius: radius.full,
-    backgroundColor: colors.white,
+    backgroundColor: colors.violet,
   },
   aiBadgeText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.xs,
-    color: colors.violet,
+    color: colors.white,
   },
   colorTitle: {
     fontFamily: fonts.subtitle,
     fontSize: fontSizes.md,
-    color: colors.white,
+    color: colors.black,
   },
   colorText: {
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
-    color: colors.white,
+    color: colors.grey,
   },
   pressed: {
     opacity: 0.85,

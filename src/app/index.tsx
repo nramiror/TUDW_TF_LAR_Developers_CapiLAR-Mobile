@@ -55,7 +55,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 280,
   },
+  // Más angostos que la pantalla y centrados: a todo el ancho se veían pesados (pedido de Andrea)
   actions: {
+    width: '100%',
+    maxWidth: 280,
+    alignSelf: 'center',
     gap: spacing.sm,
   },
 });
