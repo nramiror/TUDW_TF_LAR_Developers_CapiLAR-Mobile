@@ -12,7 +12,8 @@ interface ChipProps {
   style?: StyleProp<ViewStyle>;
 }
 
-// Opción seleccionable en forma de pastilla (profesional, día, horario) o botón chico. Elegida: fondo violeta
+// Opción seleccionable en forma de pastilla (profesional, día, horario, intensidad) o botón chico. Siempre pastilla.
+// Elegida: fondo clarito con borde y texto violeta (pedido de Andrea: el violeta lleno se veía muy fuerte)
 export const Chip = ({ label, selected = false, onPress, disabled = false, accessibilityLabel, style }: ChipProps) => (
   <Pressable
     onPress={onPress}
@@ -28,7 +29,7 @@ export const Chip = ({ label, selected = false, onPress, disabled = false, acces
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 40,
+    minHeight: 38,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
     borderWidth: 1.5,
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   selected: {
-    backgroundColor: colors.violet,
+    backgroundColor: colors.surface,
     borderColor: colors.violet,
   },
   pressed: {
@@ -54,6 +55,7 @@ const styles = StyleSheet.create({
     color: colors.black,
   },
   selectedLabel: {
-    color: colors.white,
+    fontFamily: fonts.bodySemiBold,
+    color: colors.violet,
   },
 });
