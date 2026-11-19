@@ -94,15 +94,29 @@ npm run doctor      # Expo dependency check
 
 ### Android build (APK)
 
-APKs are built with EAS (`eas.json` has the `development`, `preview` and `production` profiles):
+APKs are built in the cloud with EAS. The project belongs to the **lar-developers** organization on expo.dev (`owner` and `extra.eas.projectId` in `app.json`); ask Ramiro for an invite to build or download.
+
+| Profile | Backend | Use |
+| --- | --- | --- |
+| `preview` | Production API (`https://18-218-158-116.sslip.io`) | Testing and demos |
+| `production` | Production API | Final delivery |
+| `development` | — | Development build (needed later for push notifications) |
+
+The backend URL comes from the `env` of each profile in `eas.json`, not from `.env` (which is not uploaded). There is no staging backend, so `preview` also points to production.
 
 ```bash
-npm install -g eas-cli
-eas login
-eas build -p android --profile preview
+npx eas-cli login
+npx eas-cli build -p android --profile preview
 ```
 
-Set the backend URL of each environment in `eas.json` before building (tracked in PWA-192).
+The Android signing key is stored on EAS servers and the `versionCode` is managed remotely (it increases on each build).
+
+#### Installing the APK on Android
+
+1. Open the build page on expo.dev and press **Install** (or scan its QR code with the phone). You can also send the `.apk` file from a computer (WhatsApp, Drive or USB cable). Opening the artifact link from the Google search bar may fail with `BUILD_NOT_FOUND`.
+2. Allow installing apps from that source when Android asks.
+3. If **Play Protect** warns about an unknown app, choose *More details → Install anyway* (the app is not on Google Play).
+4. The app is installed as **CapiLAR** and works with Wi-Fi or mobile data, without Expo Go or a local backend.
 
 ## Project structure
 
