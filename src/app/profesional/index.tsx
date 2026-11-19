@@ -7,27 +7,30 @@ import { formatAlergias } from '@/api/alergias';
 import { formatEnvases } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import {
-  MAX_DIAS_ANTICIPACION,
+  FILTROS_ESTADO,
   acceptTurnoRequest,
   addDays,
+  addMonths,
   cancelTurnoRequest,
   completeTurnoRequest,
-  formatFechaCorta,
   formatFechaLarga,
+  formatMonth,
   formatWeek,
-  getAgendaRequest,
+  fromIsoDate,
+  getAgendaRangoRequest,
   getPendientesRequest,
   markAbsentRequest,
   minutosHastaInicio,
   rejectTurnoRequest,
+  startOfMonth,
   startOfWeek,
   toIsoDate,
   yaTermino,
 } from '@/api/turnos';
-import type { CompletarTurnoData, Turno } from '@/api/turnos';
+import type { CompletarTurnoData, FiltroEstado, Turno } from '@/api/turnos';
+import { ActionGrid } from '@/components/actionTile/actionTile';
 import { AgendaTurnoCard } from '@/components/agendaTurnoCard/agendaTurnoCard';
 import { Button } from '@/components/button/button';
-import { Chip } from '@/components/chip/chip';
 import { CompletarModal } from '@/components/completarModal/completarModal';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Greeting } from '@/components/greeting/greeting';
@@ -35,37 +38,86 @@ import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
 import type { SheetOption } from '@/components/optionsSheet/optionsSheet';
 import { ReasonModal } from '@/components/reasonModal/reasonModal';
 import { Screen } from '@/components/screen/screen';
+import { SelectField } from '@/components/selectField/selectField';
+import { TextField } from '@/components/textField/textField';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { fechaToIso, maskFecha } from '@/utils/validation';
 
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
-// Mientras la agenda está abierta se vuelve a pedir cada minuto: así aparecen las solicitudes
-// y cancelaciones nuevas sin tocar nada (hasta tener notificaciones push, PWA-187)
+// En la vista Hoy la agenda se vuelve a pedir cada minuto: así aparecen las solicitudes
+// y cancelaciones nuevas sin tocar nada (hasta tener notificaciones push, PWA-187). Igual que la web
 const REFRESCO_MS = 60_000;
 
+// Rango más largo que se puede pedir, como en la web (se pide de a 31 días: son hasta 12 pedidos)
+const MAX_DIAS_RANGO = 365;
+
 const ACTIVOS = ['PENDIENTE', 'CONFIRMADO', 'REPROGRAMADO'];
+const esCancelado = (turno: Turno) => turno.estado === 'CANCELADO' || turno.estado === 'RECHAZADO';
+
+// Filtro por fecha, mismas opciones que la web (Hoy por defecto)
+type FiltroFecha = 'hoy' | 'semana' | 'mes' | 'rango';
+const FILTROS_FECHA: { value: FiltroFecha; label: string }[] = [
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'semana', label: 'Semana' },
+  { value: 'mes', label: 'Mes' },
+  { value: 'rango', label: 'Rango' },
+];
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
+// Por día y hora, con los cancelados y rechazados siempre al final de cada día (pedido de Andrea)
+const porFechaYHora = (a: Turno, b: Turno) =>
+  a.fecha.localeCompare(b.fecha) || Number(esCancelado(a)) - Number(esCancelado(b)) || a.horaInicio.localeCompare(b.horaInicio);
+
 type MotivoPedido = { tipo: 'rechazar' | 'cancelar'; turno: Turno };
 
-// F03/F07: agenda del profesional. Arriba, las solicitudes pendientes (aceptar o rechazar);
-// abajo, la semana día por día con las acciones de cada turno (reprogramar, cancelar, completar, marcar ausente).
-// "Nuevo turno" carga un turno a nombre de un cliente; desde un turno confirmado se crea una serie (F05)
+// Flechas para pasar de semana o de mes
+const PeriodNav = ({ label, onPrev, onNext }: { label: string; onPrev: () => void; onNext: () => void }) => (
+  <View style={styles.periodNav}>
+    <Pressable onPress={onPrev} hitSlop={spacing.sm} style={styles.arrow} accessibilityRole="button" accessibilityLabel="Anterior">
+      <Ionicons name="chevron-back" size={22} color={colors.violet} />
+    </Pressable>
+    <Text style={styles.periodLabel}>{label}</Text>
+    <Pressable onPress={onNext} hitSlop={spacing.sm} style={styles.arrow} accessibilityRole="button" accessibilityLabel="Siguiente">
+      <Ionicons name="chevron-forward" size={22} color={colors.violet} />
+    </Pressable>
+  </View>
+);
+
+// Contador del encabezado de cada día (violeta clarito los turnos, gris los cancelados)
+const Count = ({ value, muted = false, label }: { value: number; muted?: boolean; label: string }) => (
+  <View style={[styles.count, muted && styles.countMuted]} accessibilityLabel={`${value} ${label}`}>
+    <Text style={[styles.countText, muted && styles.countTextMuted]}>{value}</Text>
+  </View>
+);
+
+// F03/F07: agenda del profesional, como la web (pedido de Linda tras la demo del 75%). Arriba, los atajos y las
+// solicitudes pendientes; después los filtros por fecha (Hoy, Semana, Mes, Rango) y por estado, y los turnos de cada día
+// en un desplegable. Cada turno muestra su estado abajo y, al lado, la acción principal (Confirmar, Completar) y "Opciones"
 export default function Agenda() {
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
   const navigation = useNavigation();
 
   const hoy = toIsoDate(new Date());
+  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('hoy');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
   const [semana, setSemana] = useState(() => startOfWeek(new Date()));
-  const [dia, setDia] = useState(hoy);
+  const [mes, setMes] = useState(() => startOfMonth(new Date()));
+  // Rango ya aplicado ("YYYY-MM-DD") y lo que se está escribiendo ("DD/MM/AAAA")
+  const [rango, setRango] = useState<{ desde: string; hasta: string } | null>(null);
+  const [rangoTexto, setRangoTexto] = useState({ desde: '', hasta: '' });
+  const [rangoError, setRangoError] = useState('');
+
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [pendientes, setPendientes] = useState<Turno[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Días desplegados o plegados a mano (si no, se usa el valor por defecto)
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
   // Turno con una acción en curso
   const [busyId, setBusyId] = useState<number | null>(null);
   const [opcionesDe, setOpcionesDe] = useState<Turno | null>(null);
@@ -73,14 +125,25 @@ export default function Agenda() {
   // Turno que se está completando (modal con lo cobrado)
   const [completando, setCompletando] = useState<Turno | null>(null);
 
+  // Fechas que se piden según el filtro (el rango, recién cuando se aplica)
+  const periodos: Record<FiltroFecha, [string, string] | null> = {
+    hoy: [hoy, hoy],
+    semana: [toIsoDate(semana), toIsoDate(addDays(semana, 6))],
+    mes: [toIsoDate(mes), toIsoDate(addDays(addMonths(mes, 1), -1))],
+    rango: rango ? [rango.desde, rango.hasta] : null,
+  };
+  const periodo = periodos[filtroFecha];
+  const desde = periodo?.[0];
+  const hasta = periodo?.[1];
+
   const load = useCallback(async () => {
     if (!token || !legajo) return;
     try {
-      const [deLaSemana, solicitudes] = await Promise.all([
-        getAgendaRequest(token, legajo, toIsoDate(semana), toIsoDate(addDays(semana, 6))),
+      const [delPeriodo, solicitudes] = await Promise.all([
+        desde && hasta ? getAgendaRangoRequest(token, legajo, desde, hasta) : Promise.resolve([]),
         getPendientesRequest(token, legajo),
       ]);
-      setTurnos(deLaSemana);
+      setTurnos(delPeriodo);
       setPendientes(solicitudes);
       setError('');
     } catch (err) {
@@ -88,15 +151,16 @@ export default function Agenda() {
     } finally {
       setIsLoading(false);
     }
-  }, [token, legajo, semana]);
+  }, [token, legajo, desde, hasta]);
 
-  // Al entrar (por ejemplo, al volver de reprogramar) y después cada minuto
+  // Al entrar (por ejemplo, al volver de reprogramar) o al cambiar el período; en Hoy, también cada minuto
   useFocusEffect(
     useCallback(() => {
       load();
+      if (filtroFecha !== 'hoy') return;
       const interval = setInterval(load, REFRESCO_MS);
       return () => clearInterval(interval);
-    }, [load]),
+    }, [load, filtroFecha]),
   );
 
   // Contador de solicitudes en la pestaña
@@ -118,11 +182,46 @@ export default function Agenda() {
     setIsRefreshing(false);
   };
 
-  const cambiarSemana = (lunes: Date, diaElegido: string) => {
-    setSemana(lunes);
-    setDia(diaElegido);
+  // Cambia lo que se pide: se muestra cargando y los días vuelven a su estado por defecto
+  const cambiarPeriodo = (cambio: () => void) => {
+    cambio();
     setTurnos([]);
+    setAbiertos({});
     setIsLoading(true);
+  };
+
+  const elegirFiltroFecha = (value: FiltroFecha) => {
+    if (value === filtroFecha) return;
+    cambiarPeriodo(() => setFiltroFecha(value));
+    // El rango sin aplicar no pide nada
+    if (value === 'rango' && !rango) setIsLoading(false);
+  };
+
+  const aplicarRango = () => {
+    const desdeIso = fechaToIso(rangoTexto.desde);
+    const hastaIso = fechaToIso(rangoTexto.hasta);
+    if (!desdeIso || !hastaIso) {
+      setRangoError('Ingresá las dos fechas (DD/MM/AAAA).');
+      return;
+    }
+    if (desdeIso > hastaIso) {
+      setRangoError('"Desde" tiene que ser antes que "Hasta".');
+      return;
+    }
+    if (hastaIso > toIsoDate(addDays(fromIsoDate(desdeIso), MAX_DIAS_RANGO))) {
+      setRangoError('Elegí un rango de hasta un año.');
+      return;
+    }
+    setRangoError('');
+    cambiarPeriodo(() => setRango({ desde: desdeIso, hasta: hastaIso }));
+  };
+
+  const conFiltros = filtroFecha !== 'hoy' || filtroEstado !== 'todos';
+  const limpiarFiltros = () => {
+    setFiltroEstado('todos');
+    setSemana(startOfWeek(new Date()));
+    setMes(startOfMonth(new Date()));
+    if (filtroFecha !== 'hoy') cambiarPeriodo(() => setFiltroFecha('hoy'));
   };
 
   const run = async (turno: Turno, request: () => Promise<Turno>, failTitle: string) => {
@@ -142,7 +241,7 @@ export default function Agenda() {
     }
   };
 
-  const aceptar = (turno: Turno) => run(turno, () => acceptTurnoRequest(token, turno.id), 'No se pudo aceptar');
+  const aceptar = (turno: Turno) => run(turno, () => acceptTurnoRequest(token, turno.id), 'No se pudo confirmar');
 
   const confirmarMotivo = async (motivo: string) => {
     if (!motivoPedido) return;
@@ -155,8 +254,6 @@ export default function Agenda() {
   };
 
   // F12: se abre el modal con lo cobrado y el método de pago; al confirmar se completa
-  const completar = (turno: Turno) => setCompletando(turno);
-
   const confirmarCompletar = async (data: CompletarTurnoData) => {
     if (!completando) return;
     const turno = completando;
@@ -244,12 +341,20 @@ export default function Agenda() {
       },
     });
 
-  // Lo que se puede hacer con cada turno (mismas reglas que el back)
+  // La acción que más se usa en cada estado va como botón en la tarjeta (como en la web); el resto, en "Opciones"
+  const principal = (turno: Turno): { label: string; onPress: () => void } | null => {
+    if (turno.estado === 'PENDIENTE') return { label: 'Confirmar', onPress: () => aceptar(turno) };
+    if (turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) <= 0) return { label: 'Completar', onPress: () => setCompletando(turno) };
+    return null;
+  };
+
+  // Lo demás que se puede hacer con cada turno (mismas reglas que el back)
   const opciones = (turno: Turno): SheetOption[] => {
     const terminado = yaTermino(turno);
+    const propio = turno.detalles.some((item) => item.legajo === legajo);
     const list: SheetOption[] = [];
     // Se carga con el turno confirmado desde que empieza (registra lo que se hizo); completado, se ve (ya cerrada)
-    if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && turno.detalles.some((item) => item.legajo === legajo)) {
+    if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && propio) {
       const noEmpezo = turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) > 0;
       list.push({
         label: 'Ficha técnica',
@@ -261,19 +366,8 @@ export default function Agenda() {
     }
     list.push({ label: 'Historial capilar', icon: 'time-outline', onPress: () => historial(turno) });
     // Las series salen de un turno confirmado o completado que todavía no es de una serie (ni empezó una)
-    if (
-      ['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) &&
-      !turno.serieId &&
-      !turno.serieOrigenId &&
-      turno.detalles.some((item) => item.legajo === legajo)
-    ) {
+    if (['CONFIRMADO', 'COMPLETADO'].includes(turno.estado) && !turno.serieId && !turno.serieOrigenId && propio) {
       list.push({ label: 'Crear serie', icon: 'repeat-outline', onPress: () => crearSerie(turno) });
-    }
-    if (turno.estado === 'PENDIENTE') {
-      list.push({ label: 'Aceptar solicitud', icon: 'checkmark-circle-outline', onPress: () => aceptar(turno) });
-    }
-    if (turno.estado === 'CONFIRMADO' && minutosHastaInicio(turno) <= 0) {
-      list.push({ label: 'Marcar como completado', icon: 'checkmark-done-outline', onPress: () => completar(turno) });
     }
     // Desde la hora de fin, igual que el back
     if (turno.estado === 'CONFIRMADO' && terminado) {
@@ -304,24 +398,55 @@ export default function Agenda() {
     return list;
   };
 
-  const dias = Array.from({ length: 7 }, (_, i) => toIsoDate(addDays(semana, i)));
-  const delDia = turnos.filter((turno) => turno.fecha === dia);
-  const activosPorDia = (fecha: string) => turnos.filter((turno) => turno.fecha === fecha && ACTIVOS.includes(turno.estado)).length;
-  // Se puede avanzar hasta donde se puede reservar (60 días)
-  const hayMasAdelante = toIsoDate(addDays(semana, 7)) <= toIsoDate(addDays(new Date(), MAX_DIAS_ANTICIPACION));
-  const esEstaSemana = toIsoDate(semana) === toIsoDate(startOfWeek(new Date()));
+  const renderTurno = (turno: Turno) => {
+    const accion = principal(turno);
+    const busy = busyId === turno.id;
+    return (
+      <AgendaTurnoCard key={turno.id} turno={turno}>
+        <Button variant="grey" size="sm" onPress={() => setOpcionesDe(turno)} disabled={busy}>
+          Opciones
+        </Button>
+        {accion && (
+          <Button size="sm" onPress={accion.onPress} isLoading={busy}>
+            {accion.label}
+          </Button>
+        )}
+      </AgendaTurnoCard>
+    );
+  };
+
+  const estadoElegido = FILTROS_ESTADO.find((item) => item.value === filtroEstado);
+  const visibles = turnos.filter((turno) => !estadoElegido?.estados || estadoElegido.estados.includes(turno.estado)).sort(porFechaYHora);
+
+  // Turnos agrupados por día, en orden
+  const porDia = new Map<string, Turno[]>();
+  for (const turno of visibles) porDia.set(turno.fecha, [...(porDia.get(turno.fecha) ?? []), turno]);
+  // Arranca desplegado hoy o, si el período no lo incluye, el primer día con turnos
+  const diaPorDefecto = porDia.has(hoy) ? hoy : [...porDia.keys()][0];
+  const estaAbierto = (fecha: string) => abiertos[fecha] ?? fecha === diaPorDefecto;
+
+  const conEstado = filtroEstado === 'todos' ? '' : ` ${estadoElegido?.label.toLowerCase()}`;
+  const vacio: Record<FiltroFecha, string> = {
+    hoy: `No tenés turnos${conEstado} hoy.`,
+    semana: `No tenés turnos${conEstado} esa semana.`,
+    mes: `No tenés turnos${conEstado} ese mes.`,
+    rango: rango ? `No tenés turnos${conEstado} entre esas fechas.` : 'Elegí desde y hasta qué día ver los turnos.',
+  };
 
   return (
     <Screen edges={[]} style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
       >
         <Greeting subtitle="Esta es tu agenda" />
-        <Button onPress={() => router.push('/nuevo-turno')}>Nuevo turno para un cliente</Button>
-        <Button variant="secundario" onPress={() => router.push('/series')}>
-          Mis series de turnos
-        </Button>
+        <ActionGrid
+          actions={[
+            { label: 'Nuevo turno para un cliente', icon: 'add-circle-outline', onPress: () => router.push('/nuevo-turno') },
+            { label: 'Mis series de turnos', icon: 'repeat-outline', onPress: () => router.push('/series') },
+          ]}
+        />
 
         {error !== '' && (
           <View style={styles.gap}>
@@ -335,83 +460,121 @@ export default function Agenda() {
         {pendientes.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Solicitudes pendientes <Text style={styles.count}>({pendientes.length})</Text>
+              Solicitudes pendientes <Text style={styles.violet}>({pendientes.length})</Text>
             </Text>
             <Text style={styles.hint}>Los clientes esperan tu respuesta para que su turno quede confirmado.</Text>
             {pendientes.map((turno) => (
-              <AgendaTurnoCard key={turno.id} turno={turno} showFecha>
-                <Button onPress={() => aceptar(turno)} isLoading={busyId === turno.id}>
-                  Aceptar
+              <AgendaTurnoCard key={turno.id} turno={turno} showFecha hideEstado>
+                <Button variant="grey" size="sm" onPress={() => setMotivoPedido({ tipo: 'rechazar', turno })} disabled={busyId === turno.id}>
+                  Rechazar
                 </Button>
-                <View style={styles.buttonsRow}>
-                  <Button variant="grey" style={styles.flex} onPress={() => setMotivoPedido({ tipo: 'rechazar', turno })} disabled={busyId === turno.id}>
-                    Rechazar
-                  </Button>
-                  <Button variant="secundario" style={styles.flex} onPress={() => reprogramar(turno)} disabled={busyId === turno.id}>
-                    Otro horario
-                  </Button>
-                </View>
+                <Button variant="secundario" size="sm" onPress={() => reprogramar(turno)} disabled={busyId === turno.id}>
+                  Otro horario
+                </Button>
+                <Button size="sm" onPress={() => aceptar(turno)} isLoading={busyId === turno.id}>
+                  Confirmar
+                </Button>
               </AgendaTurnoCard>
             ))}
           </View>
         )}
 
         <View style={styles.section}>
-          <View style={styles.weekNav}>
-            <Pressable
-              onPress={() => cambiarSemana(addDays(semana, -7), toIsoDate(addDays(semana, -7)))}
-              hitSlop={spacing.sm}
-              style={styles.arrow}
-              accessibilityRole="button"
-              accessibilityLabel="Semana anterior"
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.violet} />
-            </Pressable>
-            <Text style={styles.weekTitle}>{capitalize(formatWeek(semana))}</Text>
-            <Pressable
-              onPress={() => cambiarSemana(addDays(semana, 7), toIsoDate(addDays(semana, 7)))}
-              disabled={!hayMasAdelante}
-              hitSlop={spacing.sm}
-              style={[styles.arrow, !hayMasAdelante && styles.disabled]}
-              accessibilityRole="button"
-              accessibilityLabel="Semana siguiente"
-            >
-              <Ionicons name="chevron-forward" size={24} color={colors.violet} />
-            </Pressable>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {!esEstaSemana && <Chip label="Volver a hoy" onPress={() => cambiarSemana(startOfWeek(new Date()), hoy)} />}
-            {dias.map((fecha) => {
-              const cantidad = activosPorDia(fecha);
-              const label = `${fecha === hoy ? 'Hoy' : formatFechaCorta(fecha)}${cantidad > 0 ? ` · ${cantidad}` : ''}`;
-              return (
-                <Chip
-                  key={fecha}
-                  label={label}
-                  selected={fecha === dia}
-                  onPress={() => setDia(fecha)}
-                  accessibilityLabel={`${formatFechaLarga(fecha)}, ${cantidad} ${cantidad === 1 ? 'turno' : 'turnos'}`}
-                />
-              );
-            })}
-          </ScrollView>
+          <Text style={styles.sectionTitle}>Turnos</Text>
 
-          <Text style={styles.sectionTitle}>{dia === hoy ? 'Hoy' : capitalize(formatFechaLarga(dia))}</Text>
+          {/* Filtros como en la web: fecha (con el paso de semana o mes, o el rango) y estado */}
+          <View style={styles.filters}>
+            {/* Selects en vez de pastillas (pedido de Andrea), en una sola fila como la línea de filtros de la web */}
+            <View style={styles.row}>
+              <SelectField label="Fecha" value={filtroFecha} options={FILTROS_FECHA} onChange={elegirFiltroFecha} style={styles.flex} />
+              <SelectField label="Estado" value={filtroEstado} options={FILTROS_ESTADO} onChange={setFiltroEstado} style={styles.flex} />
+            </View>
+
+            {filtroFecha === 'hoy' && <Text style={styles.periodLabel}>{capitalize(formatFechaLarga(hoy))}</Text>}
+            {filtroFecha === 'semana' && (
+              <PeriodNav
+                label={capitalize(formatWeek(semana))}
+                onPrev={() => cambiarPeriodo(() => setSemana(addDays(semana, -7)))}
+                onNext={() => cambiarPeriodo(() => setSemana(addDays(semana, 7)))}
+              />
+            )}
+            {filtroFecha === 'mes' && (
+              <PeriodNav
+                label={capitalize(formatMonth(mes))}
+                onPrev={() => cambiarPeriodo(() => setMes(addMonths(mes, -1)))}
+                onNext={() => cambiarPeriodo(() => setMes(addMonths(mes, 1)))}
+              />
+            )}
+            {filtroFecha === 'rango' && (
+              <View style={styles.gap}>
+                <View style={styles.row}>
+                  <View style={styles.flex}>
+                    <TextField
+                      label="Desde"
+                      value={rangoTexto.desde}
+                      onChangeText={(value) => setRangoTexto((prev) => ({ ...prev, desde: maskFecha(value) }))}
+                      placeholder="DD/MM/AAAA"
+                      keyboardType="number-pad"
+                      maxLength={10}
+                    />
+                  </View>
+                  <View style={styles.flex}>
+                    <TextField
+                      label="Hasta"
+                      value={rangoTexto.hasta}
+                      onChangeText={(value) => setRangoTexto((prev) => ({ ...prev, hasta: maskFecha(value) }))}
+                      placeholder="DD/MM/AAAA"
+                      keyboardType="number-pad"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+                {rangoError !== '' && <FormMessage message={rangoError} />}
+                {/* En una fila a la derecha: con alignSelf, el botón se quedaba sin ancho y se veía como un recuadro vacío */}
+                <View style={styles.rowEnd}>
+                  <Button variant="secundario" size="sm" onPress={aplicarRango}>
+                    Ver turnos
+                  </Button>
+                </View>
+              </View>
+            )}
+
+            {conFiltros && (
+              <Pressable onPress={limpiarFiltros} hitSlop={spacing.sm} style={styles.clear} accessibilityRole="button">
+                <Ionicons name="close" size={16} color={colors.grey} />
+                <Text style={styles.clearText}>Limpiar filtros</Text>
+              </Pressable>
+            )}
+          </View>
+
           {isLoading ? (
             <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando agenda" />
-          ) : delDia.length === 0 ? (
-            <Text style={styles.hint}>No tenés turnos este día.</Text>
+          ) : porDia.size === 0 ? (
+            <Text style={styles.empty}>{vacio[filtroFecha]}</Text>
+          ) : filtroFecha === 'hoy' ? (
+            visibles.map(renderTurno)
           ) : (
-            delDia.map((turno) => {
-              const acciones = opciones(turno);
+            [...porDia].map(([fecha, delDia]) => {
+              const cancelados = delDia.filter(esCancelado).length;
+              const abierto = estaAbierto(fecha);
               return (
-                <AgendaTurnoCard key={turno.id} turno={turno}>
-                  {acciones.length > 0 && (
-                    <Button variant="secundario" onPress={() => setOpcionesDe(turno)} isLoading={busyId === turno.id}>
-                      Gestionar turno
-                    </Button>
-                  )}
-                </AgendaTurnoCard>
+                <View key={fecha} style={styles.day}>
+                  <Pressable
+                    onPress={() => setAbiertos((prev) => ({ ...prev, [fecha]: !abierto }))}
+                    style={styles.dayHeader}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: abierto }}
+                  >
+                    <Text style={styles.dayTitle}>
+                      {capitalize(formatFechaLarga(fecha))}
+                      {fecha === hoy ? ' · hoy' : ''}
+                    </Text>
+                    <Count value={delDia.length - cancelados} label="turnos" />
+                    {cancelados > 0 && <Count value={cancelados} muted label="cancelados" />}
+                    <Ionicons name={abierto ? 'chevron-up' : 'chevron-down'} size={18} color={colors.grey} />
+                  </Pressable>
+                  {abierto && <View style={styles.dayList}>{delDia.map(renderTurno)}</View>}
+                </View>
               );
             })
           )}
@@ -465,7 +628,7 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.lg,
     color: colors.black,
   },
-  count: {
+  violet: {
     color: colors.violet,
   },
   hint: {
@@ -474,40 +637,101 @@ const styles = StyleSheet.create({
     color: colors.grey,
     lineHeight: 20,
   },
-  gap: {
-    gap: spacing.md,
+  empty: {
+    paddingVertical: spacing.lg,
+    textAlign: 'center',
+    fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
   },
-  buttonsRow: {
+  gap: {
+    gap: spacing.sm,
+  },
+  row: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
   flex: {
     flex: 1,
   },
-  weekNav: {
+  rowEnd: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    justifyContent: 'flex-end',
+  },
+  filters: {
+    gap: spacing.sm,
+    padding: spacing.md,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
+  periodNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   arrow: {
-    padding: spacing.sm,
+    padding: spacing.xs,
   },
-  disabled: {
-    opacity: 0.3,
+  periodLabel: {
+    textAlign: 'center',
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.black,
   },
-  weekTitle: {
-    fontFamily: fonts.subtitle,
+  clear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: spacing.xs,
+  },
+  clearText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
+  loading: {
+    paddingVertical: spacing.lg,
+  },
+  day: {
+    gap: spacing.sm,
+  },
+  dayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dayTitle: {
+    flex: 1,
+    fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
     color: colors.black,
   },
-  row: {
+  dayList: {
     gap: spacing.sm,
   },
-  loading: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.sm,
+  count: {
+    minWidth: 24,
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 1,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.violet,
+  },
+  countMuted: {
+    backgroundColor: colors.mutedSurface,
+    borderColor: colors.border,
+  },
+  countText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.xs,
+    color: colors.violet,
+  },
+  countTextMuted: {
+    color: colors.grey,
   },
 });
