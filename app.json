@@ -32,7 +32,8 @@
         "expo-image-picker",
         {
           "photosPermission": "CapiLAR usa tus fotos para que elijas tu foto de perfil.",
-          "cameraPermission": "CapiLAR usa la cámara para que saques tu foto de perfil."
+          "cameraPermission": "CapiLAR usa la cámara para que saques tu foto de perfil.",
+          "microphonePermission": false
         }
       ],
       [
@@ -63,6 +64,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dc167a9b-2e44-47ce-b8d2-1052ac1cff56"
+      }
+    },
+    "owner": "lar-developers"
   }
 }
