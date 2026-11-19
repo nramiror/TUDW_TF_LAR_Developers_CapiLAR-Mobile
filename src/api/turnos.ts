@@ -245,3 +245,36 @@ export const formatWeek = (monday: Date) => {
   return `${start} al ${end}`;
 };
 
+
+// Primer día del mes de `date`
+export const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
+export const addMonths = (date: Date, months: number) => new Date(date.getFullYear(), date.getMonth() + months, 1);
+
+// "noviembre de 2026"
+export const formatMonth = (date: Date) => date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+// Turnos de la agenda entre dos fechas ("YYYY-MM-DD"), de cualquier largo: el back acepta hasta 31 días por consulta,
+// así que se pide por tramos (como getRangeRequest de la agenda web)
+export const getAgendaRangoRequest = async (token: string, legajo: number, desde: string, hasta: string) => {
+  const tramos: [string, string][] = [];
+  for (let inicio = fromIsoDate(desde); toIsoDate(inicio) <= hasta; inicio = addDays(inicio, MAX_DIAS_AGENDA)) {
+    const fin = toIsoDate(addDays(inicio, MAX_DIAS_AGENDA - 1));
+    tramos.push([toIsoDate(inicio), fin < hasta ? fin : hasta]);
+  }
+  const partes = await Promise.all(tramos.map(([d, h]) => getAgendaRequest(token, legajo, d, h)));
+  return partes.flat();
+};
+
+// Filtro por estado de la agenda, mismos grupos que la web
+export type FiltroEstado = 'todos' | 'confirmados' | 'porConfirmar' | 'cancelados' | 'completados' | 'ausentes';
+
+export const FILTROS_ESTADO: { value: FiltroEstado; label: string; estados?: EstadoTurno[] }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'confirmados', label: 'Confirmados', estados: ['CONFIRMADO'] },
+  // Pendientes de aprobar y reprogramados que el cliente todavía no aceptó
+  { value: 'porConfirmar', label: 'Por confirmar', estados: ['PENDIENTE', 'REPROGRAMADO'] },
+  { value: 'cancelados', label: 'Cancelados', estados: ['CANCELADO', 'RECHAZADO'] },
+  { value: 'completados', label: 'Completados', estados: ['COMPLETADO'] },
+  { value: 'ausentes', label: 'Ausentes', estados: ['AUSENTE'] },
+];

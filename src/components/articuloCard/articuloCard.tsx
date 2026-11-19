@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { formatEnvases, formatMarca, formatPeso } from '@/api/articulos';
+import { ESTADO_VENCIMIENTO_LABEL, estadoVencimiento, formatEnvases, formatMarca, formatPeso } from '@/api/articulos';
 import type { Articulo } from '@/api/articulos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { isoToFecha } from '@/utils/validation';
 
 interface ArticuloCardProps {
   articulo: Articulo;
@@ -15,6 +16,7 @@ interface ArticuloCardProps {
 export const ArticuloCard = ({ articulo, onPress }: ArticuloCardProps) => {
   const { envaseEnUso } = articulo;
   const dadoDeBaja = articulo.fechaBaja !== null;
+  const vence = dadoDeBaja ? null : estadoVencimiento(articulo);
 
   const content = (
     <>
@@ -45,6 +47,11 @@ export const ArticuloCard = ({ articulo, onPress }: ArticuloCardProps) => {
           ? `Envase abierto: quedan ${formatPeso(envaseEnUso.pesoActual, envaseEnUso.tipoPeso)}`
           : 'Sin envase abierto'}
       </Text>
+      {vence && articulo.fechaVencimiento && (
+        <Text style={[styles.vence, { color: vence === 'VENCIDO' ? colors.error : colors.warning }]}>
+          {ESTADO_VENCIMIENTO_LABEL[vence]} · {isoToFecha(articulo.fechaVencimiento.slice(0, 10))}
+        </Text>
+      )}
     </>
   );
 
@@ -100,6 +107,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1,
     backgroundColor: colors.white,
+  },
+  vence: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
   },
   badgeText: {
     fontFamily: fonts.bodySemiBold,

@@ -8,6 +8,8 @@ import { formatAlergias } from '@/api/alergias';
 import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
+import { ActionGrid } from '@/components/actionTile/actionTile';
+import type { TileAction } from '@/components/actionTile/actionTile';
 import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
@@ -23,24 +25,6 @@ const ROL_LABEL: Record<Usuario['rol'], string> = {
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-// Acceso del perfil (editar datos, contraseña, series...): se muestran en una grilla de 2 columnas
-export interface ProfileAction {
-  label: string;
-  icon: IconName;
-  onPress: () => void;
-}
-
-const ActionTile = ({ label, icon, onPress }: ProfileAction) => (
-  <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]} accessibilityRole="button">
-    <View style={styles.tileIcon}>
-      <Ionicons name={icon} size={20} color={colors.violet} />
-    </View>
-    <Text style={styles.tileText} numberOfLines={2}>
-      {label}
-    </Text>
-  </Pressable>
-);
-
 const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => (
   <View style={styles.row}>
     <Ionicons name={icon} size={20} color={colors.violet} />
@@ -53,7 +37,7 @@ const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value:
 
 interface ProfileViewProps {
   // Accesos propios del rol, después de "Editar mis datos" y "Cambiar contraseña"
-  actions?: ProfileAction[];
+  actions?: TileAction[];
   // Secciones propias del rol, entre los datos y cerrar sesión (ej. "Mis servicios" del profesional)
   children?: ReactNode;
 }
@@ -126,15 +110,13 @@ export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
       </View>
 
       {/* Grilla de 2 columnas en vez de botones a todo el ancho (pedido de Andrea tras la demo del 75%) */}
-      <View style={styles.grid}>
-        {[
-          { label: 'Editar mis datos', icon: 'create-outline' as const, onPress: () => router.push('/editar-perfil') },
-          { label: 'Cambiar contraseña', icon: 'key-outline' as const, onPress: () => router.push('/cambiar-contrasena') },
+      <ActionGrid
+        actions={[
+          { label: 'Editar mis datos', icon: 'create-outline', onPress: () => router.push('/editar-perfil') },
+          { label: 'Cambiar contraseña', icon: 'key-outline', onPress: () => router.push('/cambiar-contrasena') },
           ...actions,
-        ].map((action) => (
-          <ActionTile key={action.label} {...action} />
-        ))}
-      </View>
+        ]}
+      />
 
       {children}
 
@@ -193,42 +175,6 @@ const styles = StyleSheet.create({
   rowValue: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
-    color: colors.black,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  // Dos por fila: cada una ocupa casi la mitad y el gap completa el resto. Ícono a la izquierda y texto al lado
-  tile: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.sm + 4,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
-  },
-  tilePressed: {
-    backgroundColor: colors.surface,
-  },
-  tileIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  tileText: {
-    flex: 1,
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSizes.xs + 1,
     color: colors.black,
   },
   logout: {

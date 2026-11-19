@@ -1,22 +1,44 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { coincideBusqueda, getArticulosRequest } from '@/api/articulos';
-import type { Articulo } from '@/api/articulos';
+import { TIPO_PRODUCTO_LABEL, coincideBusqueda, estadoVencimiento, formatMarca, getArticulosRequest } from '@/api/articulos';
+import type { Articulo, TipoProducto } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import { ArticuloCard } from '@/components/articuloCard/articuloCard';
 import { Button } from '@/components/button/button';
-import { Chip } from '@/components/chip/chip';
+import { ActionGrid } from '@/components/actionTile/actionTile';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
+import { SelectField } from '@/components/selectField/selectField';
+import type { SelectOption } from '@/components/selectField/selectField';
 import { TextField } from '@/components/textField/textField';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, spacing } from '@/theme';
 
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
-// F11: stock del salón, filtrado en el celular mientras se escribe. Cada artículo abre su detalle (movimientos y envase abierto); "Escanear QR" lo abre directo
+const TODOS = 'TODOS';
+
+// Estado del stock, como los filtros de la web: poco stock y vencimiento (excluyentes)
+type FiltroEstado = typeof TODOS | 'BAJO' | 'VENCIDO' | 'VENCE_PRONTO';
+const FILTROS_ESTADO: SelectOption<FiltroEstado>[] = [
+  { value: TODOS, label: 'Todos' },
+  { value: 'BAJO', label: 'Poco stock' },
+  { value: 'VENCIDO', label: 'Vencido' },
+  { value: 'VENCE_PRONTO', label: 'Vence pronto' },
+];
+
+const cumpleEstado = (articulo: Articulo, estado: FiltroEstado) => {
+  if (estado === TODOS) return true;
+  // Los dados de baja no cuentan como poco stock ni por vencer (igual que la web)
+  if (articulo.fechaBaja !== null) return false;
+  if (estado === 'BAJO') return articulo.bajoStock;
+  return estadoVencimiento(articulo) === estado;
+};
+
+// F11: stock del salón, filtrado en el celular mientras se escribe y con la línea de filtros de la web (tipo, marca, estado). Cada artículo abre su detalle (movimientos y envase abierto); "Escanear QR" lo abre directo
 export default function Stock() {
   const { token } = useAuth();
   const [articulos, setArticulos] = useState<Articulo[]>([]);
@@ -24,7 +46,9 @@ export default function Stock() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [busqueda, setBusqueda] = useState('');
-  const [soloBajoStock, setSoloBajoStock] = useState(false);
+  const [tipo, setTipo] = useState<TipoProducto | typeof TODOS>(TODOS);
+  const [marcaId, setMarcaId] = useState<string>(TODOS);
+  const [estado, setEstado] = useState<FiltroEstado>(TODOS);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -51,19 +75,54 @@ export default function Stock() {
     setIsRefreshing(false);
   };
 
-  const bajoStock = articulos.filter((articulo) => articulo.bajoStock).length;
+  // Solo los tipos y marcas que hay en el stock, ordenados por nombre
+  const opcionesTipo: SelectOption<TipoProducto | typeof TODOS>[] = useMemo(
+    () => [
+      { value: TODOS, label: 'Todos' },
+      ...[...new Set(articulos.map((articulo) => articulo.tipoProducto))]
+        .map((value) => ({ value, label: TIPO_PRODUCTO_LABEL[value] }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'es')),
+    ],
+    [articulos],
+  );
+  const opcionesMarca: SelectOption<string>[] = useMemo(
+    () => [
+      { value: TODOS, label: 'Todas' },
+      ...[...new Map(articulos.map((articulo) => [String(articulo.marcaId), formatMarca(articulo.marca)])).entries()]
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'es')),
+    ],
+    [articulos],
+  );
 
   const visibles = useMemo(
-    () => articulos.filter((articulo) => (!soloBajoStock || articulo.bajoStock) && coincideBusqueda(articulo, busqueda)),
-    [articulos, busqueda, soloBajoStock],
+    () =>
+      articulos.filter(
+        (articulo) =>
+          (tipo === TODOS || articulo.tipoProducto === tipo) &&
+          (marcaId === TODOS || String(articulo.marcaId) === marcaId) &&
+          cumpleEstado(articulo, estado) &&
+          coincideBusqueda(articulo, busqueda),
+      ),
+    [articulos, busqueda, tipo, marcaId, estado],
   );
+
+  const hayFiltros = tipo !== TODOS || marcaId !== TODOS || estado !== TODOS;
+  const limpiarFiltros = () => {
+    setTipo(TODOS);
+    setMarcaId(TODOS);
+    setEstado(TODOS);
+  };
 
   const header = (
     <View style={styles.header}>
-      <Button onPress={() => router.push('/escanear')}>Escanear QR</Button>
-      <Button variant="secundario" onPress={() => router.push('/articulo-nuevo')}>
-        Nuevo artículo
-      </Button>
+      {/* Accesos con ícono, como en la agenda (pedido de Andrea) */}
+      <ActionGrid
+        actions={[
+          { label: 'Escanear QR', icon: 'qr-code-outline', onPress: () => router.push('/escanear') },
+          { label: 'Nuevo artículo', icon: 'add-circle-outline', onPress: () => router.push('/articulo-nuevo') },
+        ]}
+      />
       <TextField
         label="Buscar"
         placeholder="Nombre, marca, tono o código"
@@ -72,10 +131,18 @@ export default function Stock() {
         autoCorrect={false}
         returnKeyType="search"
       />
+      {/* Línea de filtros como la web */}
       <View style={styles.filters}>
-        <Chip label="Todos" selected={!soloBajoStock} onPress={() => setSoloBajoStock(false)} />
-        <Chip label={`Bajo stock (${bajoStock})`} selected={soloBajoStock} onPress={() => setSoloBajoStock(true)} />
+        <SelectField label="Tipo" value={tipo} options={opcionesTipo} onChange={setTipo} style={styles.flex} />
+        <SelectField label="Marca" value={marcaId} options={opcionesMarca} onChange={setMarcaId} style={styles.flex} />
+        <SelectField label="Estado" value={estado} options={FILTROS_ESTADO} onChange={setEstado} style={styles.flex} />
       </View>
+      {hayFiltros && (
+        <Pressable onPress={limpiarFiltros} hitSlop={spacing.sm} style={styles.clear} accessibilityRole="button">
+          <Ionicons name="close" size={16} color={colors.grey} />
+          <Text style={styles.clearText}>Limpiar filtros</Text>
+        </Pressable>
+      )}
     </View>
   );
 
@@ -92,9 +159,7 @@ export default function Stock() {
     <Text style={styles.hint}>
       {articulos.length === 0
         ? 'Todavía no hay artículos cargados. Tocá "Nuevo artículo" para cargar el primero.'
-        : soloBajoStock && !busqueda.trim()
-          ? 'No hay artículos con bajo stock.'
-          : 'No encontramos artículos con esa búsqueda.'}
+        : 'No encontramos artículos con esa búsqueda o esos filtros.'}
     </Text>
   );
 
@@ -132,6 +197,21 @@ const styles = StyleSheet.create({
   filters: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  flex: {
+    flex: 1,
+  },
+  clear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: spacing.xs,
+    marginTop: -spacing.sm,
+  },
+  clearText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
   },
   hint: {
     fontFamily: fonts.body,

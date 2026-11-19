@@ -10,6 +10,7 @@ import { FormMessage } from '@/components/formMessage/formMessage';
 import { ReasonModal } from '@/components/reasonModal/reasonModal';
 import { Screen } from '@/components/screen/screen';
 import { SerieCard } from '@/components/serieCard/serieCard';
+import { TextField } from '@/components/textField/textField';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, spacing } from '@/theme';
 
@@ -18,6 +19,11 @@ const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 
 // Las activas arriba y las dadas de baja al final; dentro de cada grupo, más nuevas primero (como las manda el back)
 const ORDEN: Record<EstadoSerie, number> = { ACTIVA: 0, SUSPENDIDA: 1, BAJA: 2 };
 const ordenar = (series: Serie[]) => [...series].sort((a, b) => ORDEN[a.estado] - ORDEN[b.estado]);
+
+// Sin mayúsculas ni tildes, para buscar por la clienta ("maria" encuentra a "María")
+const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const deLaClienta = (serie: Serie, busqueda: string) =>
+  normalizar(`${serie.cliente.nombre} ${serie.cliente.apellido}`).includes(normalizar(busqueda.trim()));
 
 type MotivoPedido = { tipo: 'suspender' | 'baja'; serie: Serie };
 
@@ -31,6 +37,7 @@ export default function Series() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [motivoPedido, setMotivoPedido] = useState<MotivoPedido | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -96,41 +103,55 @@ export default function Series() {
     </View>
   ) : (
     <Text style={styles.hint}>
-      Todavía no tenés series. Para crear una, abrí un turno confirmado o completado en tu agenda y elegí &quot;Crear serie&quot;.
+      {series.length > 0
+        ? `No encontramos series de "${busqueda.trim()}".`
+        : 'Todavía no tenés series. Para crear una, abrí un turno confirmado o completado en tu agenda y elegí "Crear serie".'}
     </Text>
   );
 
   return (
     <Screen edges={[]} style={styles.screen}>
       <FlatList
-        data={error ? [] : series}
+        data={error ? [] : series.filter((serie) => deLaClienta(serie, busqueda))}
+        // Búsqueda por clienta arriba (pedido de Andrea); solo si hay series
+        ListHeaderComponent={
+          series.length > 0 ? (
+            <View style={styles.header}>
+              <TextField
+                label="Buscar por cliente"
+                placeholder="Nombre o apellido"
+                value={busqueda}
+                onChangeText={setBusqueda}
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+            </View>
+          ) : null
+        }
+        keyboardShouldPersistTaps="handled"
         keyExtractor={(serie) => String(serie.id)}
         renderItem={({ item }) => (
           <SerieCard serie={item} para="profesional">
-            {item.estado === 'ACTIVA' && (
-              <View style={styles.buttonsRow}>
-                <Button
-                  variant="secundario"
-                  style={styles.flex}
-                  onPress={() => setMotivoPedido({ tipo: 'suspender', serie: item })}
-                  disabled={busyId === item.id}
-                >
-                  Suspender
-                </Button>
-                <Button variant="grey" style={styles.flex} onPress={() => setMotivoPedido({ tipo: 'baja', serie: item })} disabled={busyId === item.id}>
+            {item.estado !== 'BAJA' && (
+              <>
+                <Button variant="grey" size="sm" onPress={() => setMotivoPedido({ tipo: 'baja', serie: item })} disabled={busyId === item.id}>
                   Dar de baja
                 </Button>
-              </View>
-            )}
-            {item.estado === 'SUSPENDIDA' && (
-              <View style={styles.buttonsRow}>
-                <Button style={styles.flex} onPress={() => reactivar(item)} isLoading={busyId === item.id}>
-                  Reactivar
-                </Button>
-                <Button variant="grey" style={styles.flex} onPress={() => setMotivoPedido({ tipo: 'baja', serie: item })} disabled={busyId === item.id}>
-                  Dar de baja
-                </Button>
-              </View>
+                {item.estado === 'ACTIVA' ? (
+                  <Button
+                    variant="secundario"
+                    size="sm"
+                    onPress={() => setMotivoPedido({ tipo: 'suspender', serie: item })}
+                    disabled={busyId === item.id}
+                  >
+                    Suspender
+                  </Button>
+                ) : (
+                  <Button size="sm" onPress={() => reactivar(item)} isLoading={busyId === item.id}>
+                    Reactivar
+                  </Button>
+                )}
+              </>
             )}
           </SerieCard>
         )}
@@ -166,18 +187,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xl,
   },
+  header: {
+    marginBottom: spacing.md,
+  },
   hint: {
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.grey,
     lineHeight: 20,
-  },
-  buttonsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  flex: {
-    flex: 1,
   },
   separator: {
     height: spacing.sm,

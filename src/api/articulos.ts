@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 import type { UnidadInsumo } from './fichas';
 import { UNIDAD_LABEL } from './fichas';
+import { fromIsoDate } from './turnos';
 
 // F11: stock del salón. El PROFESIONAL ve los artículos, los busca por QR, registra movimientos, maneja el envase abierto
 // y crea artículos y marcas (PWA-264). Editarlos y darlos de baja es del ADMIN (web)
@@ -261,4 +262,24 @@ export const coincideBusqueda = (articulo: Articulo, busqueda: string) => {
   const texto = normalizar(busqueda.trim());
   if (!texto) return true;
   return normalizar([articulo.nombre, articulo.codigo, articulo.tonalidad, formatMarca(articulo.marca)].filter(Boolean).join(' ')).includes(texto);
+};
+
+// --- Vencimiento (copiado de la web, api/articulos.ts) ---
+
+// Desde cuántos días antes se avisa que vence
+export const DIAS_VENCE_PRONTO = 30;
+
+export type EstadoVencimiento = 'VENCIDO' | 'VENCE_PRONTO';
+
+export const ESTADO_VENCIMIENTO_LABEL: Record<EstadoVencimiento, string> = { VENCIDO: 'Vencido', VENCE_PRONTO: 'Vence pronto' };
+
+// La fecha es una sola por artículo (no por envase). El mismo día del vencimiento todavía no está vencido.
+// slice(0, 10): por si el back la manda con hora
+export const estadoVencimiento = ({ fechaVencimiento }: Pick<Articulo, 'fechaVencimiento'>): EstadoVencimiento | null => {
+  if (!fechaVencimiento) return null;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const dias = Math.round((fromIsoDate(fechaVencimiento.slice(0, 10)).getTime() - hoy.getTime()) / 86_400_000);
+  if (dias < 0) return 'VENCIDO';
+  return dias <= DIAS_VENCE_PRONTO ? 'VENCE_PRONTO' : null;
 };
