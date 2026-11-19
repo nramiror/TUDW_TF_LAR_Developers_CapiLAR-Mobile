@@ -2,14 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { MAX_HORAS_JORNADA, createAvailabilityRequest, deleteAvailabilityRequest, getAvailabilityRequest } from '@/api/professionals';
 import type { Disponibilidad } from '@/api/professionals';
 import { MAX_DIAS_ANTICIPACION, addDays, formatFechaCorta, formatWeek, fromIsoDate, startOfWeek, toIsoDate } from '@/api/turnos';
 import { Button } from '@/components/button/button';
-import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
@@ -19,13 +18,13 @@ const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 
 
 // Días de la semana en el orden del salón (getDay(): 0 es domingo)
 const DIAS = [
-  { day: 1, label: 'Lun' },
-  { day: 2, label: 'Mar' },
-  { day: 3, label: 'Mié' },
-  { day: 4, label: 'Jue' },
-  { day: 5, label: 'Vie' },
-  { day: 6, label: 'Sáb' },
-  { day: 0, label: 'Dom' },
+  { day: 1, label: 'Lunes' },
+  { day: 2, label: 'Martes' },
+  { day: 3, label: 'Miércoles' },
+  { day: 4, label: 'Jueves' },
+  { day: 5, label: 'Viernes' },
+  { day: 6, label: 'Sábado' },
+  { day: 0, label: 'Domingo' },
 ];
 
 // Las horas se eligen de a 30 minutos, de 06:00 a 23:00
@@ -277,13 +276,20 @@ export default function MisHorarios() {
         </View>
 
         <View style={styles.buttonsRow}>
-          <Chip label="Hoy" selected={esEstaSemana} onPress={() => irASemana(startOfWeek(new Date()))} />
-          <Chip
-            label={isCopying ? 'Copiando…' : 'Copiar a la próxima semana'}
+          {/* Botones chicos y más cuadrados en vez de pastillas (pedido de Andrea) */}
+          <Button variant="grey" size="sm" onPress={() => irASemana(startOfWeek(new Date()))} disabled={esEstaSemana}>
+            Hoy
+          </Button>
+          <Button
+            variant="grey"
+            size="sm"
             onPress={copiarALaSiguiente}
-            disabled={isCopying || horarios.length === 0 || !hayMasAdelante}
+            isLoading={isCopying}
+            disabled={horarios.length === 0 || !hayMasAdelante}
             style={styles.flex}
-          />
+          >
+            Copiar a la próxima semana
+          </Button>
         </View>
 
         {/* La semana día por día: sus horarios o "Libre" */}
@@ -342,9 +348,25 @@ export default function MisHorarios() {
           <Text style={styles.hint}>Los días sin horario son tus días libres: nadie puede reservarte.</Text>
 
           <Section title="Días">
-            <View style={styles.wrap}>
-              {DIAS.map(({ day, label }) => (
-                <Chip key={day} label={label} selected={dias.includes(day)} onPress={() => toggleDia(day)} />
+            {/* Una fila finita por día con su interruptor (pedido de Andrea) */}
+            <View style={styles.dayList}>
+              {DIAS.map(({ day, label }, index) => (
+                <Pressable
+                  key={day}
+                  onPress={() => toggleDia(day)}
+                  style={[styles.daySwitch, index > 0 && styles.daySwitchBorder]}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: dias.includes(day) }}
+                  accessibilityLabel={label}
+                >
+                  <Text style={[styles.daySwitchText, dias.includes(day) && styles.daySwitchOn]}>{label}</Text>
+                  <Switch
+                    value={dias.includes(day)}
+                    onValueChange={() => toggleDia(day)}
+                    trackColor={{ false: colors.border, true: colors.violet }}
+                    thumbColor={colors.white}
+                  />
+                </Pressable>
               ))}
             </View>
           </Section>
@@ -474,10 +496,31 @@ const styles = StyleSheet.create({
     color: colors.grey,
     lineHeight: 20,
   },
-  wrap: {
+  dayList: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.sm + 4,
+  },
+  daySwitch: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  daySwitchBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  daySwitchText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
+  daySwitchOn: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.black,
   },
   steppers: {
     flexDirection: 'row',
