@@ -11,6 +11,8 @@ export const colors = {
   surface: '#F8F3FC',
   border: '#E5E5E5',
   greyLight: '#A3A3A3',
+  // Gris muy suave: lo que ya no está activo (ej. series dadas de baja)
+  mutedSurface: '#F6F6F6',
   // Durazno suave para etiquetas (bg-capilar-peach/25 y text-orange-800 en la web: "Necesita evaluación")
   peachSurface: '#FEE8DC',
   peachText: '#9A3412',
