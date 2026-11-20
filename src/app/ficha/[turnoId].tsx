@@ -684,7 +684,15 @@ export default function FichaTecnica() {
       </Section>
 
       <Section title="Fotos de antes y después" hint={ficha ? undefined : 'Al agregar la primera foto se guarda la ficha.'}>
-        <FichaFotos fichaId={ficha?.id ?? null} fotos={ficha?.fotos ?? []} onAdd={addPhoto} onRemove={removePhoto} busyTipo={busyTipo} />
+        <FichaFotos
+          fichaId={ficha?.id ?? null}
+          fotos={ficha?.fotos ?? []}
+          onAdd={addPhoto}
+          onRemove={removePhoto}
+          busyTipo={busyTipo}
+          servicio={params.servicio}
+          fecha={params.fecha}
+        />
       </Section>
 
       <Section title="Indicaciones para la clienta" hint="Es lo que ve la clienta en su historial, junto con las fotos.">

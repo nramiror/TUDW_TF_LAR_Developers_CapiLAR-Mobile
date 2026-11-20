@@ -79,7 +79,7 @@ export default function MisFichas() {
             {item.fotos.length > 0 && (
               <>
                 <Text style={styles.label}>Fotos</Text>
-                <FichaFotos fichaId={item.id} fotos={item.fotos} />
+                <FichaFotos fichaId={item.id} fotos={item.fotos} servicio={item.servicio} fecha={item.fecha} />
               </>
             )}
           </View>

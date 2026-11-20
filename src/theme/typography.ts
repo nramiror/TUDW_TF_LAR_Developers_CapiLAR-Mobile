@@ -30,8 +30,7 @@ export const fonts = {
 } as const;
 
 export const fontSizes = {
-  // Etiquetas en mayúsculas (ej. "Confirmación inmediata")
-  xxs: 10,
+  // El más chico: nada por debajo de 12 px (accesibilidad, encuesta del TP4)
   xs: 12,
   sm: 14,
   md: 16,
