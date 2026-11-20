@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { AlergiasField } from '@/components/alergiasField/alergiasField';
@@ -84,16 +84,24 @@ export default function Registro() {
     }
 
     setIsLoading(true);
+    const email = values.email.trim().toLowerCase();
     try {
       await register({
         nombre: values.nombre.trim(),
         apellido: values.apellido.trim(),
-        email: values.email.trim().toLowerCase(),
+        email,
         telefono: values.telefono,
         contrasena: values.contrasena,
         alergiaIds: alergiaIds.length > 0 ? alergiaIds : undefined,
         alergia: values.alergia.trim() || undefined,
       });
+      // Encuesta del TP4: varias personas no se enteraron de que tenían que verificar el email hasta querer reservar.
+      // El aviso es nativo, así que sigue a la vista mientras el layout la lleva a Reservar
+      Alert.alert(
+        '¡Cuenta creada! Verificá tu email',
+        `Te mandamos un enlace a ${email}. Abrilo para poder reservar turnos (revisá también la carpeta de spam).`,
+        [{ text: 'Entendido' }],
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
     } finally {
