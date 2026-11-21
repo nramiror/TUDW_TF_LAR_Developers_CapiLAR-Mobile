@@ -8,7 +8,14 @@ import { getProfessionalsRequest, getUpcomingWorkDatesRequest } from '@/api/prof
 import type { ProfesionalResumen } from '@/api/professionals';
 import { formatPrice, getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
-import { createTurnoRequest, formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, toIsoDate } from '@/api/turnos';
+import {
+  createTurnoRequest,
+  formatFechaCorta,
+  formatFechaLarga,
+  getDiasSinLugarRequest,
+  getHorariosLibresRequest,
+  toIsoDate,
+} from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
@@ -47,6 +54,8 @@ export default function ReservarServicio() {
   const [legajo, setLegajo] = useState<number | null>(null);
   const [fechas, setFechas] = useState<string[]>([]);
   const [fecha, setFecha] = useState<string | null>(null);
+  // Días en los que no queda ningún horario libre
+  const [sinLugar, setSinLugar] = useState<Set<string>>(new Set());
   const [horarios, setHorarios] = useState<string[]>([]);
   const [duracion, setDuracion] = useState(0);
   const [hora, setHora] = useState<string | null>(null);
@@ -79,28 +88,35 @@ export default function ReservarServicio() {
     load();
   }, [servicioId]);
 
-  // Días que trabaja el profesional (de hoy a 60 días). Se elige el primero
+  // Días que trabaja el profesional (de hoy a 60 días). Encuesta del TP4: los que ya no tienen horarios libres
+  // se ven en gris y no se pueden elegir. Se elige el primero que tiene lugar
   useEffect(() => {
     if (!token || legajo === null) return;
     let cancelled = false;
     setFecha(null);
     setFechas([]);
+    setSinLugar(new Set());
     setError('');
     setIsLoadingFechas(true);
-    getUpcomingWorkDatesRequest(token, legajo)
-      .then((dates) => {
-        if (cancelled) return;
-        const today = toIsoDate(new Date());
-        const upcoming = dates.filter((date) => date >= today).sort();
-        setFechas(upcoming);
-        setFecha(upcoming[0] ?? null);
-      })
+    const load = async () => {
+      const dates = await getUpcomingWorkDatesRequest(token, legajo);
+      const today = toIsoDate(new Date());
+      const upcoming = dates.filter((date) => date >= today).sort();
+      const completos = await getDiasSinLugarRequest(token, upcoming, [{ servicioId, legajo }]);
+      if (cancelled) return;
+      setFechas(upcoming);
+      setSinLugar(completos);
+      setFecha(upcoming.find((date) => !completos.has(date)) ?? null);
+    };
+    load()
       .catch((err) => !cancelled && setError(errorMessage(err)))
       .finally(() => !cancelled && setIsLoadingFechas(false));
     return () => {
       cancelled = true;
     };
-  }, [token, legajo]);
+  }, [token, legajo, servicioId]);
+
+  const fechasConLugar = fechas.filter((item) => !sinLugar.has(item)).length;
 
   // Horarios libres de ese día para el servicio con ese profesional
   useEffect(() => {
@@ -189,12 +205,31 @@ export default function ReservarServicio() {
               {profesional?.nombre} no tiene días cargados en los próximos 60 días.
               {profesionales.length > 1 ? ' Probá con otro profesional.' : ''}
             </Text>
+          ) : fechasConLugar === 0 ? (
+            <Text style={styles.hint}>
+              {profesional?.nombre} no tiene horarios libres en los próximos 60 días.
+              {profesionales.length > 1 ? ' Probá con otro profesional.' : ''}
+            </Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-              {fechas.map((item) => (
-                <Chip key={item} label={formatFechaCorta(item)} selected={item === fecha} onPress={() => setFecha(item)} />
-              ))}
-            </ScrollView>
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+                {fechas.map((item) => {
+                  const completo = sinLugar.has(item);
+                  return (
+                    <Chip
+                      key={item}
+                      label={formatFechaCorta(item)}
+                      selected={item === fecha}
+                      onPress={() => setFecha(item)}
+                      disabled={completo}
+                      style={completo && styles.dayFull}
+                      accessibilityLabel={`${formatFechaLarga(item)}${completo ? ', sin horarios libres' : ''}`}
+                    />
+                  );
+                })}
+              </ScrollView>
+              {sinLugar.size > 0 && <Text style={styles.hint}>Los días en gris ya no tienen horarios libres.</Text>}
+            </>
           )}
         </Section>
       )}
@@ -265,6 +300,10 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: spacing.sm,
+  },
+  // Día completo: gris como lo inactivo (además del 50% de opacidad del Chip deshabilitado)
+  dayFull: {
+    backgroundColor: colors.mutedSurface,
   },
   loading: {
     alignSelf: 'flex-start',

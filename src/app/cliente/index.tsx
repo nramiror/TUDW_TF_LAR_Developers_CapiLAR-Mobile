@@ -8,6 +8,7 @@ import { ApiError } from '@/api/client';
 import { getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import { Button } from '@/components/button/button';
+import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Greeting } from '@/components/greeting/greeting';
 import { Screen } from '@/components/screen/screen';
@@ -65,6 +66,8 @@ export default function Reservar() {
         ListHeaderComponent={
           <View style={styles.header}>
             <Greeting subtitle="¿Qué te querés hacer?" />
+            {/* Encuesta del TP4: el aviso solo estaba en el perfil y no lo veían hasta querer reservar */}
+            <EmailVerification />
             <Pressable
               onPress={() => router.push('/probar-color')}
               style={({ pressed }) => pressed && styles.pressed}

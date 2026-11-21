@@ -11,7 +11,7 @@ import { FormMessage } from '@/components/formMessage/formMessage';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 
-// F06: aviso en el perfil del cliente que no verificó su email (sin verificar no puede reservar), con "Reenviar enlace".
+// F06: aviso en Reservar y en el perfil del cliente que no verificó su email (sin verificar no puede reservar), con "Reenviar enlace".
 // El enlace del mail abre la web: el cliente puede abrirlo desde la compu o el navegador del celu
 export const EmailVerification = () => {
   const { user, token, updateUser } = useAuth();

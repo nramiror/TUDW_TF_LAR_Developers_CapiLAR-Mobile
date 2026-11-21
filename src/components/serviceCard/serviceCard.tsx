@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.xxs,
+    fontSize: fontSizes.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },

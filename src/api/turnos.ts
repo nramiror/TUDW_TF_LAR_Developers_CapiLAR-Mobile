@@ -106,6 +106,21 @@ export interface HorariosLibresOptions {
 export const getHorariosLibresRequest = (token: string, fecha: string, items: TurnoItem[], options: HorariosLibresOptions = {}) =>
   apiFetch<HorariosLibres>('/turnos/horarios-libres', { method: 'POST', body: { fecha, items, ...options }, token });
 
+// Días (de los que trabaja el profesional) en los que ya no queda ningún horario libre. El back no tiene un
+// endpoint por rango, así que se pregunta día por día, de a 4 a la vez. Si un pedido falla, ese día se deja elegible
+export const getDiasSinLugarRequest = async (token: string, fechas: string[], items: TurnoItem[]) => {
+  const sinLugar = new Set<string>();
+  const pendientes = [...fechas];
+  const worker = async () => {
+    for (let fecha = pendientes.shift(); fecha; fecha = pendientes.shift()) {
+      const libres = await getHorariosLibresRequest(token, fecha, items).catch(() => null);
+      if (libres && libres.horarios.length === 0) sinLugar.add(fecha);
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  return sinLugar;
+};
+
 // CLIENTE: nace CONFIRMADO, o PENDIENTE si algún servicio requiere evaluación (403 si no verificó su email).
 // PROFESIONAL / ADMIN con clienteId: queda CONFIRMADO
 export const createTurnoRequest = (token: string, data: CreateTurnoData) =>
@@ -201,6 +216,9 @@ export const upcomingRanges = () => {
 // "2026-10-07" -> "martes 7 de octubre"
 export const formatFechaLarga = (fecha: string) =>
   fromIsoDate(fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+// "2026-10-07" -> "07/10/2026"
+export const formatFechaNumerica = (fecha: string) => fecha.split('-').reverse().join('/');
 
 // "2026-10-07" -> "mar 7 oct"
 export const formatFechaCorta = (fecha: string) =>

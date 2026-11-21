@@ -157,7 +157,7 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
       </Section>
 
       <Section title="Fotos">
-        <FichaFotos fichaId={ficha.id} fotos={ficha.fotos} />
+        <FichaFotos fichaId={ficha.id} fotos={ficha.fotos} servicio={ficha.servicio} fecha={ficha.fecha} />
       </Section>
 
       <Section title="Indicaciones para la clienta">
