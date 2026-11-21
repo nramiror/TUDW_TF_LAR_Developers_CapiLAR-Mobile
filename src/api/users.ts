@@ -44,6 +44,19 @@ export const deletePhotoRequest = (token: string) => apiFetch<Usuario>('/users/m
 export const resendVerificationRequest = (token: string) =>
   apiFetch<{ message: string }>('/users/me/verificar-email', { method: 'POST', token });
 
+// F06/F07 push: el token de Expo queda en la sesión de este celular (cerrar sesión lo borra en el back).
+// 400 si no es un token de Expo
+export const registerPushTokenRequest = (token: string, pushToken: string) =>
+  apiFetch<{ message: string }>('/users/me/push-token', { method: 'PATCH', body: { token: pushToken }, token });
+
+// Tipos de aviso que manda el back, con el turno en `data`
+export type TipoPush = 'TURNO_NUEVO' | 'TURNO_CANCELADO' | 'TURNO_CONFIRMADO' | 'TURNO_RECHAZADO' | 'TURNO_REPROGRAMADO' | 'RECORDATORIO';
+
+export interface PushData {
+  tipo: TipoPush;
+  turnoId: number;
+}
+
 // Borrado lógico: la cuenta no puede volver a entrar y el token deja de servir
 export const deleteAccountRequest = (token: string) => apiFetch<{ message: string }>('/users/me', { method: 'DELETE', token });
 
