@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { PushNotifications } from '@/components/pushNotifications/pushNotifications';
 import { AuthProvider } from '@/context/auth/authProvider';
 import { colors, fontAssets, fonts } from '@/theme';
 
@@ -23,6 +24,8 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <StatusBar style="dark" />
+      {/* F06/F07: registra el token de push y abre los turnos al tocar un aviso (no hace nada en Expo Go) */}
+      <PushNotifications />
       <Stack
         screenOptions={{
           headerShown: false,

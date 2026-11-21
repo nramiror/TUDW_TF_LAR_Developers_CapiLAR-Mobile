@@ -16,6 +16,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<Usuario | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  // Cambia con cada sesión nueva de este celular (abrir la app logueado, login, registro, cambio de contraseña),
+  // no con cada refresh: el token de push se guarda por sesión en el back
+  const [sessionId, setSessionId] = useState(0);
 
   // Copias para el refresher, que corre fuera del render
   const tokenRef = useRef<string | null>(null);
@@ -89,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoggedInRef.current = true;
         setToken(tokenRef.current);
         setUser(me);
+        setSessionId((id) => id + 1);
       } catch {
         // 401: el refresher ya borró la sesión y hay que volver a entrar.
         // Si es un error de red se conservan los tokens, para reintentar la próxima vez que se abra la app
@@ -106,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const startSession = useCallback(
     async (session: AuthResponse) => {
       await applySession(session);
+      setSessionId((id) => id + 1);
       return session.user;
     },
     [applySession],
@@ -130,6 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (actual: string, nueva: string) => {
       if (!tokenRef.current) throw new ApiError(SESSION_EXPIRED_MESSAGE, 401);
       await applySession(await changePasswordRequest(tokenRef.current, actual, nueva));
+      setSessionId((id) => id + 1);
     },
     [applySession],
   );
@@ -140,6 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       token,
       isAuthenticated: user !== null,
       isCheckingSession,
+      sessionId,
       hasRole: (...roles: Rol[]) => user !== null && roles.includes(user.rol),
       login,
       register,
@@ -148,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       renewToken,
       updateUser: setUser,
     }),
-    [user, token, isCheckingSession, login, register, logout, changePassword, renewToken],
+    [user, token, isCheckingSession, sessionId, login, register, logout, changePassword, renewToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
