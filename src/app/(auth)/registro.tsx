@@ -99,7 +99,7 @@ export default function Registro() {
       // El aviso es nativo, así que sigue a la vista mientras el layout la lleva a Reservar
       Alert.alert(
         '¡Cuenta creada! Verificá tu email',
-        `Te mandamos un enlace a ${email}. Abrilo para poder reservar turnos (revisá también la carpeta de spam).`,
+        `Te mandamos un enlace a ${email}. Abrilo para poder reservar turnos (revisá también la carpeta de spam). Si no te llega, lo podés reenviar desde Reservar o Mi perfil.`,
         [{ text: 'Entendido' }],
       );
     } catch (err) {

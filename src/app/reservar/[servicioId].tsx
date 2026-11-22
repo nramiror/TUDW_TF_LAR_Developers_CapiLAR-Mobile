@@ -54,8 +54,8 @@ export default function ReservarServicio() {
   const [legajo, setLegajo] = useState<number | null>(null);
   const [fechas, setFechas] = useState<string[]>([]);
   const [fecha, setFecha] = useState<string | null>(null);
-  // Días en los que no queda ningún horario libre
-  const [sinLugar, setSinLugar] = useState<Set<string>>(new Set());
+  // Días que no se pueden elegir: null si no queda ningún horario libre, o el motivo si ya tiene ese servicio ese día
+  const [sinLugar, setSinLugar] = useState<Map<string, string | null>>(new Map());
   const [horarios, setHorarios] = useState<string[]>([]);
   const [duracion, setDuracion] = useState(0);
   const [hora, setHora] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function ReservarServicio() {
     let cancelled = false;
     setFecha(null);
     setFechas([]);
-    setSinLugar(new Set());
+    setSinLugar(new Map());
     setError('');
     setIsLoadingFechas(true);
     const load = async () => {
@@ -117,6 +117,9 @@ export default function ReservarServicio() {
   }, [token, legajo, servicioId]);
 
   const fechasConLugar = fechas.filter((item) => !sinLugar.has(item)).length;
+  // Regla del back (22/11): un servicio por día. Se avisa qué días ya tiene uno, con el mensaje del back
+  const repetidos = fechas.filter((item) => sinLugar.get(item));
+  const hayCompletos = fechas.some((item) => sinLugar.has(item) && !sinLugar.get(item));
 
   // Horarios libres de ese día para el servicio con ese profesional
   useEffect(() => {
@@ -220,15 +223,23 @@ export default function ReservarServicio() {
                       key={item}
                       label={formatFechaCorta(item)}
                       selected={item === fecha}
-                      onPress={() => setFecha(item)}
+                      onPress={() => {
+                        setFecha(item);
+                        setError('');
+                      }}
                       disabled={completo}
                       style={completo && styles.dayFull}
-                      accessibilityLabel={`${formatFechaLarga(item)}${completo ? ', sin horarios libres' : ''}`}
+                      accessibilityLabel={`${formatFechaLarga(item)}${completo ? `, ${sinLugar.get(item) ?? 'sin horarios libres'}` : ''}`}
                     />
                   );
                 })}
               </ScrollView>
-              {sinLugar.size > 0 && <Text style={styles.hint}>Los días en gris ya no tienen horarios libres.</Text>}
+              {hayCompletos && <Text style={styles.hint}>Los días en gris ya no tienen horarios libres.</Text>}
+              {repetidos.map((item) => (
+                <Text key={item} style={styles.hint}>
+                  {formatFechaCorta(item)}: {sinLugar.get(item)}.
+                </Text>
+              ))}
             </>
           )}
         </Section>

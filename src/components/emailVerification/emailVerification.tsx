@@ -55,7 +55,7 @@ export const EmailVerification = () => {
         <Text style={styles.title}>Verificá tu email</Text>
       </View>
       <Text style={styles.text}>
-        Para reservar turnos tenés que verificar tu email. Abrí el enlace que te mandamos a {user.email}.
+        Para reservar turnos tenés que verificar tu email. Abrí el enlace que te mandamos a {user.email} (si no lo ves, revisá la carpeta de spam).
       </Text>
       {message && <FormMessage message={message.text} type={message.type} />}
       <Button variant="secundario" onPress={resend} isLoading={isSending}>

@@ -14,11 +14,29 @@ export interface Servicio {
   precio: string;
   // Si es true, la reserva del cliente queda PENDIENTE hasta que un profesional la acepte; si no, nace CONFIRMADA
   requiereEvaluacion: boolean;
+  // Para agruparlos en el catálogo (PWA-288: todo servicio tiene una)
+  categoria: Categoria;
   fechaBaja: string | null;
+}
+
+export interface Categoria {
+  id: number;
+  nombre: string;
 }
 
 // Servicios que ofrece el salón (solo activos), sin iniciar sesión
 export const getServicesRequest = () => apiFetch<Servicio[]>('/servicios');
+
+// Agrupa los servicios por categoría, con las categorías por nombre (el orden de los servicios se mantiene). Igual que la web
+export const agruparPorCategoria = <T extends Pick<Servicio, 'categoria'>>(servicios: T[]) => {
+  const grupos = new Map<number, { categoria: Categoria; servicios: T[] }>();
+  for (const servicio of servicios) {
+    const grupo = grupos.get(servicio.categoria.id) ?? { categoria: servicio.categoria, servicios: [] };
+    grupo.servicios.push(servicio);
+    grupos.set(servicio.categoria.id, grupo);
+  }
+  return [...grupos.values()].sort((a, b) => a.categoria.nombre.localeCompare(b.categoria.nombre, 'es'));
+};
 
 // URL de la foto de un servicio (pública), para usar en <Image source={{ uri }} />
 export const servicePhotoPath = (id: number) => `/servicios/${id}/foto`;

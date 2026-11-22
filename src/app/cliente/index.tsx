@@ -2,12 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
-import { getServicesRequest } from '@/api/services';
+import { agruparPorCategoria, getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import { Button } from '@/components/button/button';
+import { CategoriaChips } from '@/components/categoriaChips/categoriaChips';
 import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Greeting } from '@/components/greeting/greeting';
@@ -16,12 +17,15 @@ import { ServiceCard } from '@/components/serviceCard/serviceCard';
 import { colors, fonts, fontSizes, gradient, radius, spacing } from '@/theme';
 
 // F03: catálogo de servicios. Al tocar uno se elige profesional, día y horario (reservar/[servicioId]).
-// Arriba, la entrada a "Probá un color" (TP3, YouCam), como en el menú de la web
+// Arriba, la entrada a "Probá un color" (TP3, YouCam), como en el menú de la web.
+// Encuesta del TP4 (como la web): agrupados por categoría, con pastillas para ver una sola
 export default function Reservar() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Pastilla de categoría elegida; null: todas
+  const [categoriaId, setCategoriaId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -42,6 +46,11 @@ export default function Reservar() {
     setIsRefreshing(false);
   };
 
+  const grupos = agruparPorCategoria(servicios);
+  // Si la categoría elegida se quedó sin servicios (al refrescar), se vuelve a "Todas"
+  const visibles = grupos.filter((grupo) => categoriaId === null || grupo.categoria.id === categoriaId);
+  const sections = (visibles.length > 0 ? visibles : grupos).map(({ categoria, servicios: data }) => ({ categoria, data }));
+
   const empty = isLoading ? (
     <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando servicios" />
   ) : error ? (
@@ -57,12 +66,21 @@ export default function Reservar() {
 
   return (
     <Screen edges={[]} style={styles.screen}>
-      <FlatList
-        data={error ? [] : servicios}
+      <SectionList
+        sections={error ? [] : sections}
         keyExtractor={(servicio) => String(servicio.id)}
         renderItem={({ item }) => (
           <ServiceCard servicio={item} onPress={() => router.push({ pathname: '/reservar/[servicioId]', params: { servicioId: item.id } })} />
         )}
+        // Con una sola categoría no hace falta el título
+        renderSectionHeader={({ section }) =>
+          grupos.length > 1 ? (
+            <Text style={styles.categoria} accessibilityRole="header">
+              {section.categoria.nombre}
+            </Text>
+          ) : null
+        }
+        stickySectionHeadersEnabled={false}
         ListHeaderComponent={
           <View style={styles.header}>
             <Greeting subtitle="¿Qué te querés hacer?" />
@@ -96,6 +114,13 @@ export default function Reservar() {
               </LinearGradient>
             </Pressable>
             <Text style={styles.hint}>Elegí un servicio para ver los días y horarios disponibles.</Text>
+            {!error && grupos.length > 1 && (
+              <CategoriaChips
+                categorias={grupos.map((grupo) => grupo.categoria)}
+                value={visibles.length > 0 ? categoriaId : null}
+                onChange={setCategoriaId}
+              />
+            )}
           </View>
         }
         ListEmptyComponent={empty}
@@ -181,6 +206,16 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: spacing.sm,
+  },
+  // Como el título de categoría de la web: chico, en mayúsculas y gris
+  categoria: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.xs,
+    color: colors.grey,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   loading: {
     paddingVertical: spacing.xl,

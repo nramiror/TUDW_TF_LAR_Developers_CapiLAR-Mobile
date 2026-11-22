@@ -1,5 +1,5 @@
 import type { AlergiaCliente } from './alergias';
-import { apiFetch } from './client';
+import { ApiError, apiFetch } from './client';
 
 // Copiado del front (src/api/turnos.ts): mismos tipos, reglas y endpoints de turnos.
 // Si cambia allá, hay que actualizarlo acá también.
@@ -106,15 +106,21 @@ export interface HorariosLibresOptions {
 export const getHorariosLibresRequest = (token: string, fecha: string, items: TurnoItem[], options: HorariosLibresOptions = {}) =>
   apiFetch<HorariosLibres>('/turnos/horarios-libres', { method: 'POST', body: { fecha, items, ...options }, token });
 
-// Días (de los que trabaja el profesional) en los que ya no queda ningún horario libre. El back no tiene un
-// endpoint por rango, así que se pregunta día por día, de a 4 a la vez. Si un pedido falla, ese día se deja elegible
+// Días (de los que trabaja el profesional) que no se pueden elegir, con el motivo: null si ya no queda ningún horario
+// libre, o el mensaje del 409 si la clienta ya tiene ese servicio ese día (un servicio por día, regla del back).
+// El back no tiene un endpoint por rango, así que se pregunta día por día, de a 4 a la vez. Si un pedido falla por
+// otra cosa, ese día se deja elegible
 export const getDiasSinLugarRequest = async (token: string, fechas: string[], items: TurnoItem[]) => {
-  const sinLugar = new Set<string>();
+  const sinLugar = new Map<string, string | null>();
   const pendientes = [...fechas];
   const worker = async () => {
     for (let fecha = pendientes.shift(); fecha; fecha = pendientes.shift()) {
-      const libres = await getHorariosLibresRequest(token, fecha, items).catch(() => null);
-      if (libres && libres.horarios.length === 0) sinLugar.add(fecha);
+      try {
+        const libres = await getHorariosLibresRequest(token, fecha, items);
+        if (libres.horarios.length === 0) sinLugar.set(fecha, null);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) sinLugar.set(fecha, err.message);
+      }
     }
   };
   await Promise.all(Array.from({ length: 4 }, worker));
