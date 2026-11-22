@@ -7,12 +7,13 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { formatAlergias } from '@/api/alergias';
 import { ApiError } from '@/api/client';
 import { getMyServicesRequest, getUpcomingWorkDatesRequest } from '@/api/professionals';
-import { formatServiceDuration } from '@/api/services';
+import { agruparPorCategoria, formatServiceDuration } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import { createTurnoRequest, formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, toIsoDate } from '@/api/turnos';
 import { searchClientesRequest } from '@/api/users';
 import type { ClienteResumen } from '@/api/users';
 import { Button } from '@/components/button/button';
+import { CategoriaChips } from '@/components/categoriaChips/categoriaChips';
 import { Chip } from '@/components/chip/chip';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -59,9 +60,13 @@ export default function NuevoTurno() {
 
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [servicioId, setServicioId] = useState<number | null>(null);
+  // Pastilla de categoría elegida; null: todas
+  const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [fechas, setFechas] = useState<string[]>([]);
   const [fecha, setFecha] = useState<string | null>(null);
   const [horarios, setHorarios] = useState<string[]>([]);
+  // Por qué no hay horarios ese día (409 del back: el cliente ya tiene ese servicio ese día)
+  const [motivoSinHorarios, setMotivoSinHorarios] = useState('');
   const [hora, setHora] = useState<string | null>(null);
 
   const [isLoadingDatos, setIsLoadingDatos] = useState(true);
@@ -118,10 +123,16 @@ export default function NuevoTurno() {
     let cancelled = false;
     setHora(null);
     setHorarios([]);
+    setMotivoSinHorarios('');
     setIsLoadingHorarios(true);
     getHorariosLibresRequest(token, fecha, [{ servicioId, legajo }], { clienteId: cliente.id })
       .then((result) => !cancelled && setHorarios(result.horarios))
-      .catch((err) => !cancelled && setError(errorMessage(err)))
+      .catch((err) => {
+        if (cancelled) return;
+        // Un servicio por día por cliente (regla del back): el motivo va en lugar de la lista
+        if (err instanceof ApiError && err.status === 409) setMotivoSinHorarios(err.message);
+        else setError(errorMessage(err));
+      })
       .finally(() => !cancelled && setIsLoadingHorarios(false));
     return () => {
       cancelled = true;
@@ -138,6 +149,18 @@ export default function NuevoTurno() {
   }
 
   const servicio = servicios.find((item) => item.id === servicioId);
+  const grupos = agruparPorCategoria(servicios);
+  const conTitulos = grupos.length > 1 && categoriaId === null;
+
+  const elegirServicio = (id: number) => {
+    setServicioId(id);
+    setError('');
+  };
+
+  const elegirFecha = (item: string) => {
+    setFecha(item);
+    setError('');
+  };
 
   const cambiarCliente = () => {
     setCliente(null);
@@ -217,11 +240,24 @@ export default function NuevoTurno() {
               {servicios.length === 0 ? (
                 <Text style={styles.hint}>Todavía no elegiste tus servicios. Hacelo desde "Mi perfil".</Text>
               ) : (
-                <View style={styles.wrap}>
-                  {servicios.map((item) => (
-                    <Chip key={item.id} label={item.tipo} selected={item.id === servicioId} onPress={() => setServicioId(item.id)} />
-                  ))}
-                </View>
+                <>
+                  {/* Como la web: por categoría, con pastillas para ver una sola */}
+                  {grupos.length > 1 && (
+                    <CategoriaChips categorias={grupos.map((grupo) => grupo.categoria)} value={categoriaId} onChange={setCategoriaId} />
+                  )}
+                  {grupos
+                    .filter((grupo) => categoriaId === null || grupo.categoria.id === categoriaId)
+                    .map((grupo) => (
+                      <View key={grupo.categoria.id} style={styles.grupo}>
+                        {conTitulos && <Text style={styles.categoria}>{grupo.categoria.nombre}</Text>}
+                        <View style={styles.wrap}>
+                          {grupo.servicios.map((item) => (
+                            <Chip key={item.id} label={item.tipo} selected={item.id === servicioId} onPress={() => elegirServicio(item.id)} />
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                </>
               )}
               {servicio && <Text style={styles.hint}>Duración: {formatServiceDuration(servicio.tiempoDuracion)}</Text>}
             </Section>
@@ -233,7 +269,7 @@ export default function NuevoTurno() {
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
                     {fechas.map((item) => (
-                      <Chip key={item} label={formatFechaCorta(item)} selected={item === fecha} onPress={() => setFecha(item)} />
+                      <Chip key={item} label={formatFechaCorta(item)} selected={item === fecha} onPress={() => elegirFecha(item)} />
                     ))}
                   </ScrollView>
                 )}
@@ -244,6 +280,8 @@ export default function NuevoTurno() {
               <Section title="¿A qué hora?">
                 {isLoadingHorarios ? (
                   <ActivityIndicator color={colors.violet} style={styles.loading} />
+                ) : motivoSinHorarios ? (
+                  <Text style={styles.hint}>{motivoSinHorarios}. Probá con otro día.</Text>
                 ) : horarios.length === 0 ? (
                   <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
                 ) : (
@@ -344,6 +382,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+  },
+  grupo: {
+    gap: spacing.xs,
+  },
+  // Como el título de categoría de la web: chico, en mayúsculas y gris
+  categoria: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.xs,
+    color: colors.grey,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginTop: spacing.xs,
   },
   row: {
     gap: spacing.sm,

@@ -1,9 +1,10 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { addMyServiceRequest, getMyServicesRequest, removeMyServiceRequest } from '@/api/professionals';
-import { formatPrice, formatServiceDuration, getServicesRequest } from '@/api/services';
+import { agruparPorCategoria, formatPrice, formatServiceDuration, getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -13,7 +14,7 @@ import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
 // Catálogo del salón con un interruptor por servicio para que el PROFESIONAL marque los que hace (igual que en la web).
-// Los clientes solo pueden reservarle los servicios marcados
+// Los clientes solo pueden reservarle los servicios marcados. Agrupados por categoría y desplegables, como la web
 export const MyServices = () => {
   const { token } = useAuth();
   const [catalog, setCatalog] = useState<Servicio[]>([]);
@@ -23,6 +24,8 @@ export const MyServices = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
+  // Categorías desplegadas: arrancan cerradas y cada profesional abre las que necesita (como la web)
+  const [abiertas, setAbiertas] = useState<Set<number>>(new Set());
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -85,24 +88,46 @@ export const MyServices = () => {
         <Text style={styles.hint}>El salón todavía no tiene servicios cargados.</Text>
       ) : (
         <View style={styles.card}>
-          {catalog.map((servicio, index) => (
-            <View key={servicio.id} style={[styles.row, index > 0 && styles.divider]}>
-              <View style={styles.rowText}>
-                <Text style={styles.name}>{servicio.tipo}</Text>
-                <Text style={styles.detail}>
-                  {formatServiceDuration(servicio.tiempoDuracion)} · {formatPrice(servicio.precio)}
-                </Text>
+          {agruparPorCategoria(catalog).map(({ categoria, servicios }, groupIndex) => {
+            const abierta = abiertas.has(categoria.id);
+            const marcados = servicios.filter((servicio) => mine.has(servicio.id)).length;
+            return (
+              <View key={categoria.id} style={groupIndex > 0 && styles.divider}>
+                <Pressable
+                  onPress={() => setAbiertas((prev) => toggleIn(prev, categoria.id, !abierta))}
+                  style={({ pressed }) => [styles.groupHeader, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: abierta }}
+                  accessibilityLabel={`${categoria.nombre}, ${marcados} de ${servicios.length} marcados`}
+                >
+                  <Text style={styles.groupName}>{categoria.nombre}</Text>
+                  <Text style={styles.detail}>
+                    {marcados} de {servicios.length}
+                  </Text>
+                  <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={18} color={colors.grey} />
+                </Pressable>
+                {abierta &&
+                  servicios.map((servicio) => (
+                    <View key={servicio.id} style={[styles.row, styles.divider]}>
+                      <View style={styles.rowText}>
+                        <Text style={styles.name}>{servicio.tipo}</Text>
+                        <Text style={styles.detail}>
+                          {formatServiceDuration(servicio.tiempoDuracion)} · {formatPrice(servicio.precio)}
+                        </Text>
+                      </View>
+                      <Switch
+                        value={mine.has(servicio.id)}
+                        onValueChange={(on) => toggle(servicio, on)}
+                        disabled={saving.has(servicio.id)}
+                        trackColor={{ false: colors.border, true: colors.violet }}
+                        thumbColor={colors.white}
+                        accessibilityLabel={`Realizo ${servicio.tipo}`}
+                      />
+                    </View>
+                  ))}
               </View>
-              <Switch
-                value={mine.has(servicio.id)}
-                onValueChange={(on) => toggle(servicio, on)}
-                disabled={saving.has(servicio.id)}
-                trackColor={{ false: colors.border, true: colors.violet }}
-                thumbColor={colors.white}
-                accessibilityLabel={`Realizo ${servicio.tipo}`}
-              />
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -142,6 +167,24 @@ const styles = StyleSheet.create({
   divider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm + 4,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  // Como el título de categoría de la web: en mayúsculas y gris
+  groupName: {
+    flex: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.xs,
+    color: colors.grey,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
   rowText: {
     flex: 1,
