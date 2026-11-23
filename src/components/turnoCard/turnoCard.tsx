@@ -12,7 +12,7 @@ import { colors, fonts, fontSizes, spacing } from '@/theme';
 const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   PENDIENTE: { label: 'Pendiente de confirmación', color: colors.warning },
   CONFIRMADO: { label: 'Confirmado', color: colors.success },
-  REPROGRAMADO: { label: 'Nuevo horario propuesto', color: colors.violet },
+  REPROGRAMADO: { label: 'Nuevo horario propuesto', color: colors.violetText },
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'No se pudo confirmar', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   time: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.violetText,
   },
   detail: {
     fontFamily: fonts.body,

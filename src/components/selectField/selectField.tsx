@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -24,6 +24,8 @@ interface SelectFieldProps<T extends string> {
 export const SelectField = <T extends string>({ label, value, options, onChange, style }: SelectFieldProps<T>) => {
   const [open, setOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  // Lo presionado y lo elegido, en el color del rol
+  const accent = useAccent();
   const elegida = options.find((option) => option.value === value);
 
   return (
@@ -31,7 +33,7 @@ export const SelectField = <T extends string>({ label, value, options, onChange,
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.box, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.box, pressed && { backgroundColor: accent.surface }]}
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${elegida?.label ?? ''}`}
         accessibilityHint="Abre las opciones"
@@ -57,12 +59,12 @@ export const SelectField = <T extends string>({ label, value, options, onChange,
                     setOpen(false);
                     onChange(option.value);
                   }}
-                  style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+                  style={({ pressed }) => [styles.option, pressed && { backgroundColor: accent.surface }]}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selected }}
                 >
-                  <Text style={[styles.optionText, selected && styles.optionSelected]}>{option.label}</Text>
-                  {selected && <Ionicons name="checkmark" size={20} color={colors.violet} />}
+                  <Text style={[styles.optionText, selected && [styles.optionSelected, { color: accent.text }]]}>{option.label}</Text>
+                  {selected && <Ionicons name="checkmark" size={20} color={accent.accent} />}
                 </Pressable>
               );
             })}
@@ -95,9 +97,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
   },
   value: {
     flexShrink: 1,
@@ -142,6 +141,5 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     fontFamily: fonts.bodySemiBold,
-    color: colors.violet,
   },
 });

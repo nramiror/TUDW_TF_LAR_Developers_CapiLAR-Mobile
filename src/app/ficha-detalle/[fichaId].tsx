@@ -45,7 +45,7 @@ export default function FichaDetalle() {
       ) : ficha ? (
         <FichaView ficha={ficha} />
       ) : (
-        <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando ficha" />
+        <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando ficha" />
       )}
     </Screen>
   );

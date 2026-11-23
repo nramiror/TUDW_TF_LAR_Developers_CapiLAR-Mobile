@@ -109,7 +109,7 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
   const visibles = useMemo(() => articulos.filter((articulo) => coincideBusqueda(articulo, busqueda)), [articulos, busqueda]);
 
   const empty = isLoading ? (
-    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando productos" />
+    <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando productos" />
   ) : error ? (
     <View style={styles.gap}>
       <FormMessage message={error} />
@@ -134,7 +134,7 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
         accessibilityRole="button"
         accessibilityLabel={`Crear artículo ${busqueda.trim()}`}
       >
-        <Ionicons name="add-circle-outline" size={20} color={colors.violet} />
+        <Ionicons name="add-circle-outline" size={20} color={colors.fuchsia} />
         <Text style={styles.crearText}>Crear artículo: «{busqueda.trim()}»</Text>
       </Pressable>
     ) : null;
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     gap: 2,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   pressed: {
     opacity: 0.7,
@@ -282,13 +282,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.violet,
+    borderColor: colors.fuchsia,
   },
   crearText: {
     flex: 1,
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   headerAlta: {
     justifyContent: 'flex-start',

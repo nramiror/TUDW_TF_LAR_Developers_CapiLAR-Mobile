@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { colors, fonts, fontSizes, gradient, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, gradient, radius, spacing, useAccent } from '@/theme';
 
 interface ButtonProps {
   children: ReactNode;
@@ -27,7 +27,9 @@ const BORDE = 1.5;
 // Android lo estiraba hacia abajo como un recuadro vacío (pasó con "Ver turnos" del rango y con "Cerrar sesión")
 export const Button = ({ children, onPress, variant = 'primario', size = 'md', disabled = false, isLoading = false, style }: ButtonProps) => {
   const isDisabled = disabled || isLoading;
-  const textColor = variant === 'primario' ? colors.white : variant === 'grey' ? colors.grey : colors.violet;
+  // El borde degradado es el de marca en los dos roles; el texto del secundario va en el color del rol
+  const { text: accentText } = useAccent();
+  const textColor = variant === 'primario' ? colors.white : variant === 'grey' ? colors.grey : accentText;
 
   return (
     <Pressable

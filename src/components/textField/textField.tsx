@@ -3,7 +3,7 @@ import { forwardRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
 
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 interface TextFieldProps extends TextInputProps {
   label: string;
@@ -20,7 +20,8 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(({ label, error, 
   const [isFocused, setIsFocused] = useState(false);
   const [isHidden, setIsHidden] = useState(true);
 
-  const borderColor = error ? colors.error : isFocused ? colors.violet : colors.border;
+  const { accent } = useAccent();
+  const borderColor = error ? colors.error : isFocused ? accent : colors.border;
 
   return (
     <View style={styles.container}>

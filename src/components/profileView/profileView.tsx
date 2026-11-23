@@ -14,7 +14,7 @@ import { EmailVerification } from '@/components/emailVerification/emailVerificat
 import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 import { isoToFecha } from '@/utils/validation';
 
 const ROL_LABEL: Record<Usuario['rol'], string> = {
@@ -25,15 +25,18 @@ const ROL_LABEL: Record<Usuario['rol'], string> = {
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => (
-  <View style={styles.row}>
-    <Ionicons name={icon} size={20} color={colors.violet} />
-    <View style={styles.rowText}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => {
+  const { accent } = useAccent();
+  return (
+    <View style={styles.row}>
+      <Ionicons name={icon} size={20} color={accent} />
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 interface ProfileViewProps {
   // Accesos propios del rol, después de "Editar mis datos" y "Cambiar contraseña"
@@ -46,6 +49,7 @@ interface ProfileViewProps {
 export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
   const { user, token, logout } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const accent = useAccent();
   if (!user) return null;
 
   const confirmLogout = () =>
@@ -92,12 +96,12 @@ export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
         <Text style={styles.name}>
           {user.nombre} {user.apellido}
         </Text>
-        <Text style={styles.role}>{ROL_LABEL[user.rol]}</Text>
+        <Text style={[styles.role, { color: accent.text }]}>{ROL_LABEL[user.rol]}</Text>
       </View>
 
       <EmailVerification />
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: accent.surface }]}>
         <DataRow icon="mail-outline" label="Correo" value={user.email} />
         <DataRow icon="call-outline" label="Teléfono" value={user.telefono || '—'} />
         {user.fechaNacimiento && <DataRow icon="gift-outline" label="Fecha de nacimiento" value={isoToFecha(user.fechaNacimiento)} />}
@@ -151,10 +155,8 @@ const styles = StyleSheet.create({
   role: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
-    color: colors.violet,
   },
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
     gap: spacing.md,

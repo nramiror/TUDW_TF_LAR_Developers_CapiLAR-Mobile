@@ -210,7 +210,7 @@ export default function NuevoTurno() {
               hint="El cliente tiene que tener cuenta en CapiLAR."
             />
             {isSearching ? (
-              <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Buscando clientes" />
+              <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Buscando clientes" />
             ) : busqueda.trim().length >= MIN_BUSQUEDA && clientes.length === 0 ? (
               <Text style={styles.hint}>No encontramos clientes con "{busqueda.trim()}".</Text>
             ) : (
@@ -223,7 +223,7 @@ export default function NuevoTurno() {
                   accessibilityLabel={`Elegir a ${item.nombre} ${item.apellido}`}
                 >
                   <ClienteInfo cliente={item} />
-                  <Ionicons name="chevron-forward" size={20} color={colors.violet} />
+                  <Ionicons name="chevron-forward" size={20} color={colors.fuchsia} />
                 </Pressable>
               ))
             )}
@@ -233,7 +233,7 @@ export default function NuevoTurno() {
 
       {cliente &&
         (isLoadingDatos ? (
-          <ActivityIndicator color={colors.violet} style={styles.loading} />
+          <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
         ) : (
           <>
             <Section title="¿Qué servicio?">
@@ -279,7 +279,7 @@ export default function NuevoTurno() {
             {servicioId !== null && fecha && (
               <Section title="¿A qué hora?">
                 {isLoadingHorarios ? (
-                  <ActivityIndicator color={colors.violet} style={styles.loading} />
+                  <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
                 ) : motivoSinHorarios ? (
                   <Text style={styles.hint}>{motivoSinHorarios}. Probá con otro día.</Text>
                 ) : horarios.length === 0 ? (
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   pressed: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   selected: {
     flexDirection: 'row',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: colors.violet,
+    borderColor: colors.fuchsia,
     backgroundColor: colors.white,
   },
   clienteInfo: {
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   link: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   wrap: {
     flexDirection: 'row',

@@ -51,7 +51,7 @@ export default function HistorialCapilar() {
   };
 
   const empty = isLoading ? (
-    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando historial" />
+    <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando historial" />
   ) : error ? (
     <View style={styles.gap}>
       <FormMessage message={error} />
@@ -91,7 +91,7 @@ export default function HistorialCapilar() {
         ListEmptyComponent={empty}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       />
     </Screen>
   );
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   pressed: {
     opacity: 0.7,

@@ -9,7 +9,7 @@ import { formatFechaNumerica } from '@/api/turnos';
 import { AuthImage } from '@/components/authImage/authImage';
 import { Button } from '@/components/button/button';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 import type { ImageSource } from '@/utils/pickImage';
 
 const THUMB = 88;
@@ -38,6 +38,8 @@ export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null, s
   const insets = useSafeAreaInsets();
   const [addingTipo, setAddingTipo] = useState<MomentoFoto | null>(null);
   const [viewing, setViewing] = useState<FotoFicha | null>(null);
+  // El recuadro de "Agregar" en el color del rol (en la clienta solo se ven las fotos)
+  const accent = useAccent();
   const editable = onAdd !== undefined;
   // Encuesta del TP4 (accesibilidad): "Foto de antes – Coloración, 12/10/2026"
   const describe = (tipo: MomentoFoto) =>
@@ -74,16 +76,16 @@ export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null, s
               <Pressable
                 onPress={() => setAddingTipo(grupo.tipo)}
                 disabled={busyTipo !== null}
-                style={({ pressed }) => [styles.thumb, styles.add, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.thumb, styles.add, { borderColor: accent.accent }, pressed && { backgroundColor: accent.surface }]}
                 accessibilityRole="button"
                 accessibilityLabel={`Agregar foto de ${grupo.label.toLowerCase()}`}
               >
                 {busyTipo === grupo.tipo ? (
-                  <ActivityIndicator color={colors.violet} />
+                  <ActivityIndicator color={accent.accent} />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={26} color={colors.violet} />
-                    <Text style={styles.addText}>Agregar</Text>
+                    <Ionicons name="camera-outline" size={26} color={accent.accent} />
+                    <Text style={[styles.addText, { color: accent.text }]}>Agregar</Text>
                   </>
                 )}
               </Pressable>
@@ -160,16 +162,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.violet,
     backgroundColor: colors.white,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
   },
   addText: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.xs,
-    color: colors.violet,
   },
   empty: {
     fontFamily: fonts.body,

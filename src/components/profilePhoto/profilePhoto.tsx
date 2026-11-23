@@ -10,7 +10,7 @@ import { deletePhotoRequest, uploadPhotoRequest, userPhoto, userPhotoPath } from
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
 import type { SheetOption } from '@/components/optionsSheet/optionsSheet';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors, fonts, fontSizes, gradient, radius } from '@/theme';
+import { colors, fonts, fontSizes, gradient, radius, useAccent } from '@/theme';
 import { pickImage } from '@/utils/pickImage';
 import type { ImageSource } from '@/utils/pickImage';
 
@@ -28,6 +28,7 @@ const showError = (err: unknown) =>
 // Foto de perfil (o las iniciales sobre el degradado si no tiene). Al tocarla: sacar foto, elegir de la galería o quitarla
 export const ProfilePhoto = () => {
   const { user, token, updateUser, renewToken } = useAuth();
+  const { accent } = useAccent();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Si la imagen no carga (por ejemplo, sin conexión) se muestran las iniciales
@@ -104,7 +105,7 @@ export const ProfilePhoto = () => {
             <ActivityIndicator color={colors.white} />
           </View>
         )}
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: accent }]}>
           <Ionicons name="camera" size={16} color={colors.white} />
         </View>
       </Pressable>
@@ -140,7 +141,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: radius.full,
-    backgroundColor: colors.violet,
     borderWidth: 2,
     borderColor: colors.white,
     alignItems: 'center',

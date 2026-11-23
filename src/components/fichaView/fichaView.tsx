@@ -132,7 +132,7 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
                 // F11: los del stock llevan la cajita (se descuentan al completar el turno)
                 insumo.articuloId ? (
                   <View key={insumo.id ?? i} style={styles.insumoRow} accessibilityLabel={`${formatInsumo(insumo)}, del stock`}>
-                    <Ionicons name="cube-outline" size={14} color={colors.violet} style={styles.insumoIcon} />
+                    <Ionicons name="cube-outline" size={14} color={colors.fuchsia} style={styles.insumoIcon} />
                     <Text style={[styles.insumo, styles.flex]}>{formatInsumo(insumo)}</Text>
                   </View>
                 ) : (
@@ -146,7 +146,7 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
         )}
         {ficha.formulas.some((formula) => formula.insumos.some((insumo) => insumo.articuloId)) && (
           <View style={styles.insumoRow}>
-            <Ionicons name="cube-outline" size={14} color={colors.violet} style={styles.insumoIcon} />
+            <Ionicons name="cube-outline" size={14} color={colors.fuchsia} style={styles.insumoIcon} />
             <Text style={[styles.detail, styles.flex]}>
               {ficha.cerradaEn ? 'Producto del stock: se descontó al completar el turno.' : 'Producto del stock: se descuenta al completar el turno.'}
             </Text>
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   sectionTitle: {
     fontFamily: fonts.subtitle,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   formulaTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   insumo: {
     fontFamily: fonts.body,

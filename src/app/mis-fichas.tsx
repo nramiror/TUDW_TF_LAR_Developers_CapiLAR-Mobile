@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.violetText,
   },
   text: {
     fontFamily: fonts.body,

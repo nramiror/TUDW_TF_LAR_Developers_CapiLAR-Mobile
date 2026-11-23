@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   actions: {
     gap: spacing.sm,

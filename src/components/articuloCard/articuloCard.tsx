@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   pressable: {
     flexDirection: 'row',
