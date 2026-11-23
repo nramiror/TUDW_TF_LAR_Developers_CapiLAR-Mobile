@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -19,25 +19,31 @@ import {
   createFichaRequest,
   deleteFichaPhotoRequest,
   getFichaRequest,
+  getUltimoDiagnosticoRequest,
+  sugerirFichaRequest,
+  tieneDiagnostico,
   totalDeProductos,
   updateFichaRequest,
   uploadFichaPhotoRequest,
 } from '@/api/fichas';
 import type {
+  DiagnosticoAnterior,
   Ficha,
   FichaData,
   Formula,
   FormulaInsumo,
+  FormulaSugerida,
   FotoFicha,
   MomentoFoto,
   NivelCapilar,
+  SugerenciaIA,
   TipoDePelo,
   UnidadInsumo,
   VolumenDePelo,
 } from '@/api/fichas';
 import { parseTratamientos, serializeTratamientos } from '@/api/tratamientos';
 import { formatPrice } from '@/api/services';
-import { formatFechaLarga } from '@/api/turnos';
+import { formatFechaLarga, formatFechaNumerica } from '@/api/turnos';
 import { ArticuloPicker } from '@/components/articuloPicker/articuloPicker';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
@@ -45,7 +51,9 @@ import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
 import { FichaView, formatInsumo } from '@/components/fichaView/fichaView';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
+import { SugerenciaIACard, analisisComoTexto } from '@/components/sugerenciaIA/sugerenciaIA';
 import { TextField } from '@/components/textField/textField';
+import { TextLink } from '@/components/textLink/textLink';
 import { TotalProductos } from '@/components/totalProductos/totalProductos';
 import {
   TratamientosField,
@@ -138,6 +146,29 @@ const toForm = (ficha: Ficha | null): FichaForm => {
     })),
   };
 };
+
+// Fórmula sugerida por la IA al formato del formulario: sus insumos siempre son del stock
+const fromSugerida = (formula: FormulaSugerida): FormulaForm => ({
+  descripcion: formula.descripcion ?? '',
+  zonaOtra: Boolean(formula.descripcion) && !ZONAS_FORMULA.includes(formula.descripcion ?? ''),
+  oxidanteVolumen: formula.oxidanteVolumen ?? null,
+  tiempoPoseMin: numberText(formula.tiempoPoseMin ?? null),
+  insumos: formula.insumos.map((insumo) => ({
+    articuloId: insumo.articuloId,
+    comoTexto: false,
+    producto: insumo.producto,
+    marca: insumo.marca,
+    tono: insumo.tono ?? '',
+    cantidad: numberText(insumo.cantidad),
+    unidad: insumo.unidad,
+  })),
+});
+
+// Si una fórmula tiene algo cargado (las vacías o con insumos sin elegir no cuentan)
+const formulaConDatos = (formula: FormulaForm) =>
+  Boolean(formula.descripcion.trim() || formula.tiempoPoseMin.trim()) ||
+  formula.oxidanteVolumen !== null ||
+  formula.insumos.some((insumo) => insumo.articuloId !== null || insumo.comoTexto);
 
 // Entero dentro del rango, o null si está vacío; undefined si no es válido
 const parseEntero = (text: string, min: number, max: number) => {
@@ -263,6 +294,7 @@ export default function FichaTecnica() {
     detalleId: string;
     // Vacío si el servicio todavía no tiene ficha
     fichaId: string;
+    clienteId?: string;
     cliente: string;
     alergia?: string;
     servicio: string;
@@ -272,6 +304,7 @@ export default function FichaTecnica() {
   const turnoId = Number(params.turnoId);
   const detalleId = Number(params.detalleId);
   const fichaId = params.fichaId ? Number(params.fichaId) : null;
+  const clienteId = params.clienteId ? Number(params.clienteId) : null;
   const { user, token } = useAuth();
   const legajo = user?.profesional?.legajo;
 
@@ -288,6 +321,19 @@ export default function FichaTecnica() {
   const [pickerFor, setPickerFor] = useState<{ formula: number; insumo: number } | null>(null);
   // Artículos del salón, para el costo de cada producto. Si no cargan, la ficha anda igual sin costos
   const [articulos, setArticulos] = useState<Articulo[]>([]);
+  // Ficha nueva: el diagnóstico de la última ficha cerrada de la clienta, ya precargado en el formulario
+  const [anterior, setAnterior] = useState<DiagnosticoAnterior | null>(null);
+  // F14/F15: la última sugerencia de la IA y el formulario de antes de aplicarla (para descartarla; null después de guardar)
+  const [sugerencia, setSugerencia] = useState<SugerenciaIA | null>(null);
+  const [formulasSugeridas, setFormulasSugeridas] = useState(0);
+  const [antesDeSugerencia, setAntesDeSugerencia] = useState<FichaForm | null>(null);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [iaError, setIaError] = useState('');
+  // F15: las alertas se muestran otra vez al guardar, una sola vez por sugerencia
+  const [alertasVistas, setAlertasVistas] = useState(false);
+  // El formulario de este render: la sugerencia llega después de un await y no tiene que usar uno viejo
+  const formRef = useRef(form);
+  formRef.current = form;
 
   useEffect(() => {
     if (!token) return;
@@ -304,13 +350,28 @@ export default function FichaTecnica() {
     try {
       const existente = fichaId ? await getFichaRequest(token, fichaId) : null;
       setFicha(existente);
-      setForm(toForm(existente));
+      const inicial = toForm(existente);
+      // Ficha nueva: arranca con el diagnóstico de la última ficha cerrada (sin IA, al instante). Si falla, arranca vacía
+      if (!existente && clienteId && params.estado === 'CONFIRMADO') {
+        const previo = await getUltimoDiagnosticoRequest(token, clienteId).catch(() => null);
+        if (previo && tieneDiagnostico(previo)) {
+          setAnterior(previo);
+          Object.assign(inicial, {
+            porosidad: previo.porosidad,
+            elasticidad: previo.elasticidad,
+            porcentajeCanas: numberText(previo.porcentajeCanas),
+            tipoDePelo: previo.tipoDePelo,
+            volumenDePelo: previo.volumenDePelo,
+          });
+        }
+      }
+      setForm(inicial);
     } catch (err) {
       setLoadError(errorMessage(err));
     } finally {
       setIsLoading(false);
     }
-  }, [token, fichaId]);
+  }, [token, fichaId, clienteId, params.estado]);
 
   useEffect(() => {
     load();
@@ -429,6 +490,8 @@ export default function FichaTecnica() {
         : await createFichaRequest(token, turnoId, detalleId, result.data);
       setFicha(saved);
       setForm(toForm(saved));
+      // Lo sugerido ya quedó guardado: no hay a qué volver
+      setAntesDeSugerencia(null);
       return saved;
     } catch (err) {
       setError(errorMessage(err));
@@ -438,8 +501,105 @@ export default function FichaTecnica() {
     }
   };
 
-  const handleSave = async () => {
+  const guardar = async () => {
     if (await save()) Alert.alert('Ficha guardada', 'Podés seguir editándola hasta que marques el turno como completado.');
+  };
+
+  // F15: si la IA marcó alertas, se muestran otra vez antes de guardar (advertencia antes de confirmar la ficha)
+  const handleSave = () => {
+    const alertas = sugerencia?.analisis.alertas ?? [];
+    if (alertas.length === 0 || alertasVistas) {
+      guardar();
+      return;
+    }
+    Alert.alert('Revisá las alertas de la IA', alertas.map((alerta) => `• ${alerta}`).join('\n\n'), [
+      { text: 'Volver a la ficha', style: 'cancel' },
+      {
+        text: 'Ya las revisé',
+        onPress: () => {
+          setAlertasVistas(true);
+          guardar();
+        },
+      },
+    ]);
+  };
+
+  // Precarga lo sugerido sin guardar: los campos de diagnóstico que vinieron y, si se acepta, las fórmulas
+  const aplicarSugerencia = (nueva: SugerenciaIA) => {
+    const nuevas = nueva.formulas.map(fromSugerida);
+    const aplicar = (reemplazar: boolean) => {
+      const base = formRef.current;
+      // Con una sugerencia anterior sin guardar, "Descartar" vuelve a lo de antes de la primera
+      setAntesDeSugerencia((prev) => prev ?? base);
+      setForm({
+        ...base,
+        porosidad: nueva.porosidad ?? base.porosidad,
+        elasticidad: nueva.elasticidad ?? base.elasticidad,
+        porcentajeCanas: nueva.porcentajeCanas != null ? String(nueva.porcentajeCanas) : base.porcentajeCanas,
+        tipoDePelo: nueva.tipoDePelo ?? base.tipoDePelo,
+        volumenDePelo: nueva.volumenDePelo ?? base.volumenDePelo,
+        formulas: reemplazar ? nuevas : base.formulas,
+      });
+      setSugerencia(nueva);
+      setFormulasSugeridas(reemplazar ? nuevas.length : 0);
+      setAlertasVistas(false);
+      // El aviso de la ficha anterior ya no corresponde: el diagnóstico ahora es el de la IA
+      setAnterior(null);
+    };
+
+    if (nuevas.length > 0 && formRef.current.formulas.some(formulaConDatos)) {
+      Alert.alert(
+        'Fórmulas sugeridas',
+        `La IA sugiere ${nuevas.length === 1 ? 'una fórmula' : `${nuevas.length} fórmulas`} con productos del stock. ¿Querés reemplazar las que ya cargaste?`,
+        [
+          { text: 'Mantener las mías', style: 'cancel', onPress: () => aplicar(false) },
+          { text: 'Reemplazar', onPress: () => aplicar(true) },
+        ],
+      );
+      return;
+    }
+    aplicar(nuevas.length > 0);
+  };
+
+  // La IA trabaja con la ficha guardada: si todavía no existe, primero se guarda con lo cargado (como con las fotos)
+  const sugerir = async () => {
+    setIaError('');
+    setIsSuggesting(true);
+    try {
+      const target = ficha ?? (await save());
+      if (!target) {
+        setIaError('Para pedir la sugerencia se guarda la ficha: revisá el error de abajo.');
+        return;
+      }
+      aplicarSugerencia(await sugerirFichaRequest(token, target.id));
+    } catch (err) {
+      setIaError(errorMessage(err));
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const descartarSugerencia = () => {
+    if (antesDeSugerencia) setForm(antesDeSugerencia);
+    setAntesDeSugerencia(null);
+    setSugerencia(null);
+    setFormulasSugeridas(0);
+  };
+
+  // El análisis no se guarda en ningún lado: copiado a las observaciones internas, queda en la ficha
+  const copiarAnalisis = () => {
+    if (!sugerencia) return;
+    const texto = analisisComoTexto(sugerencia);
+    const actual = form.observacionesInternas.trim();
+    if (actual.includes(texto)) return;
+    setField('observacionesInternas', (actual ? `${actual}\n\n${texto}` : texto).slice(0, MAX_TEXTO));
+    Alert.alert('Análisis copiado', 'Quedó en "Observaciones internas" y se guarda con la ficha.');
+  };
+
+  // Vuelve a dejar vacío el diagnóstico precargado de la ficha anterior
+  const limpiarAnterior = () => {
+    setForm((prev) => ({ ...prev, porosidad: null, elasticidad: null, porcentajeCanas: '', tipoDePelo: null, volumenDePelo: null }));
+    setAnterior(null);
   };
 
   const addPhoto = async (tipo: MomentoFoto, source: ImageSource) => {
@@ -502,7 +662,37 @@ export default function FichaTecnica() {
         Ningún dato es obligatorio. La ficha se puede editar hasta que marques el turno como completado; después queda en el historial.
       </Text>
 
+      <Section
+        title="Asistente de IA"
+        hint={`Mira las últimas fichas de la clienta, sus alergias, el stock y la foto de antes si la subiste. Sugiere el diagnóstico y la fórmula, y avisa si hay algo a tener en cuenta antes de trabajar.${ficha ? '' : ' Para pedirla, primero se guarda la ficha con lo cargado.'}`}
+      >
+        <Button variant="secundario" onPress={sugerir} isLoading={isSuggesting} disabled={isSaving || busyTipo !== null}>
+          {sugerencia ? 'Volver a sugerir con IA' : 'Sugerir con IA'}
+        </Button>
+        {isSuggesting && <Text style={styles.hint}>Analizando el historial de la clienta... puede tardar unos segundos.</Text>}
+        {iaError !== '' && <FormMessage message={iaError} />}
+        {sugerencia && (
+          <SugerenciaIACard
+            sugerencia={sugerencia}
+            formulasPrecargadas={formulasSugeridas}
+            onDescartar={antesDeSugerencia ? descartarSugerencia : undefined}
+            onCopiar={copiarAnalisis}
+          />
+        )}
+      </Section>
+
       <Section title="Antecedentes del cabello">
+        {anterior && (
+          <View style={styles.anterior}>
+            <Ionicons name="time-outline" size={18} color={colors.violet} />
+            <View style={styles.flex}>
+              <Text style={styles.hint}>
+                Precargado de la ficha del {formatFechaNumerica(anterior.fecha)} ({anterior.servicio}). Revisalo: el pelo pudo cambiar.
+              </Text>
+              <TextLink label="Empezar de cero" onPress={limpiarAnterior} />
+            </View>
+          </View>
+        )}
         <OptionChips label="Porosidad" options={NIVEL_LABEL} value={form.porosidad} onChange={(value) => setField('porosidad', value)} />
         <OptionChips label="Elasticidad" options={NIVEL_LABEL} value={form.elasticidad} onChange={(value) => setField('elasticidad', value)} />
         <OptionChips label="Tipo de pelo" options={TIPO_DE_PELO_LABEL} value={form.tipoDePelo} onChange={(value) => setField('tipoDePelo', value)} />
@@ -844,5 +1034,14 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  anterior: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
   },
 });
