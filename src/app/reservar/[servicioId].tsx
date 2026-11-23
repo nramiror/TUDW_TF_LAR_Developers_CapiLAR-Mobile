@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -9,6 +10,8 @@ import type { ProfesionalResumen } from '@/api/professionals';
 import { formatPrice, getServicesRequest } from '@/api/services';
 import type { Servicio } from '@/api/services';
 import {
+  MAX_DIAS_ANTICIPACION,
+  buscarPrimerHorarioLibre,
   createTurnoRequest,
   formatFechaCorta,
   formatFechaLarga,
@@ -26,6 +29,10 @@ import { Screen } from '@/components/screen/screen';
 import { ServiceCard } from '@/components/serviceCard/serviceCard';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+
+type Primero = { estado: 'buscando' } | { estado: 'listo'; encontrado: { legajo: number; fecha: string; hora: string } | null };
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
@@ -69,6 +76,12 @@ export default function ReservarServicio() {
   const [error, setError] = useState('');
   // Cambia para volver a pedir los horarios (por ejemplo, si otro cliente tomó el elegido)
   const [horariosVersion, setHorariosVersion] = useState(0);
+  // "Primer turno disponible" (como la web): buscando, o lo que encontró (null si nadie tiene lugar en 60 días)
+  const [primero, setPrimero] = useState<Primero | null>(null);
+  // Número de la búsqueda: si mientras busca se elige una profesional a mano, la respuesta se descarta
+  const busquedaPrimero = useRef(0);
+  // Día y horario encontrados, que se eligen cuando terminan de cargar los días y los horarios de esa profesional
+  const pendiente = useRef<{ fecha: string; hora: string } | null>(null);
 
   // Servicio y profesionales que lo hacen. Si hay uno solo, queda elegido
   useEffect(() => {
@@ -107,7 +120,11 @@ export default function ReservarServicio() {
       if (cancelled) return;
       setFechas(upcoming);
       setSinLugar(completos);
-      setFecha(upcoming.find((date) => !completos.has(date)) ?? null);
+      // Con "Primer turno disponible", el día que encontró; si no, el primero con lugar
+      const buscado = pendiente.current?.fecha;
+      const usable = buscado && upcoming.includes(buscado) && !completos.has(buscado) ? buscado : null;
+      if (!usable) pendiente.current = null;
+      setFecha(usable ?? upcoming.find((date) => !completos.has(date)) ?? null);
     };
     load()
       .catch((err) => !cancelled && setError(errorMessage(err)))
@@ -134,6 +151,11 @@ export default function ReservarServicio() {
         if (cancelled) return;
         setHorarios(result.horarios);
         setDuracion(result.duracion);
+        // "Primer turno disponible": queda elegido el horario que encontró, listo para confirmar
+        if (pendiente.current?.fecha === fecha) {
+          if (result.horarios.includes(pendiente.current.hora)) setHora(pendiente.current.hora);
+          pendiente.current = null;
+        }
       })
       .catch((err) => !cancelled && setError(errorMessage(err)))
       .finally(() => !cancelled && setIsLoadingHorarios(false));
@@ -157,6 +179,51 @@ export default function ReservarServicio() {
   }
 
   const profesional = profesionales.find((item) => item.legajo === legajo);
+
+  // Elegir una profesional a mano deja de usar "Primer turno disponible" (y descarta una búsqueda en curso)
+  const elegirProfesional = (nuevo: number) => {
+    busquedaPrimero.current++;
+    pendiente.current = null;
+    setPrimero(null);
+    setLegajo(nuevo);
+  };
+
+  // Busca, entre todas las profesionales que hacen el servicio, el primer día con lugar de cada una (de los que trabaja)
+  // y se queda con el más cercano: elige profesional, día y horario, y queda listo para confirmar
+  const buscarPrimero = async () => {
+    const busqueda = ++busquedaPrimero.current;
+    pendiente.current = null;
+    setPrimero({ estado: 'buscando' });
+    setLegajo(null);
+    setError('');
+
+    const hoy = toIsoDate(new Date());
+    const porProfesional = await Promise.all(
+      profesionales.map(async (item) => {
+        const dias = await getUpcomingWorkDatesRequest(token, item.legajo).catch((): string[] => []);
+        const proximos = dias.filter((dia) => dia >= hoy).sort();
+        const libre = await buscarPrimerHorarioLibre(token, proximos, [{ servicioId, legajo: item.legajo }]);
+        return libre && { legajo: item.legajo, ...libre };
+      }),
+    );
+    if (busqueda !== busquedaPrimero.current) return;
+
+    // El más cercano: por fecha y, el mismo día, por hora ("HH:mm" se compara como texto)
+    const mejor =
+      porProfesional
+        .filter((item) => item !== null)
+        .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora))[0] ?? null;
+    setPrimero({ estado: 'listo', encontrado: mejor });
+    if (mejor) {
+      pendiente.current = { fecha: mejor.fecha, hora: mejor.hora };
+      setLegajo(mejor.legajo);
+    }
+  };
+
+  // El aviso de lo encontrado se ve mientras siga elegido eso mismo
+  const encontrado = primero?.estado === 'listo' ? primero.encontrado : null;
+  const mostrarEncontrado =
+    encontrado !== null && encontrado.legajo === legajo && encontrado.fecha === fecha && encontrado.hora === hora && profesional;
 
   const book = async () => {
     if (legajo === null || !fecha || !hora) return;
@@ -187,16 +254,54 @@ export default function ReservarServicio() {
         {profesionales.length === 0 ? (
           <Text style={styles.hint}>Por ahora ningún profesional hace este servicio. Probá con otro.</Text>
         ) : (
-          <View style={styles.wrap}>
-            {profesionales.map((item) => (
+          <>
+            <View style={styles.wrap}>
+              {/* Quality del TF (como la web): sin elegir a nadie, el turno libre más cercano entre todo el equipo */}
               <Chip
-                key={item.legajo}
-                label={`${item.nombre} ${item.apellido}`}
-                selected={item.legajo === legajo}
-                onPress={() => setLegajo(item.legajo)}
+                label="Primer turno disponible"
+                selected={primero !== null}
+                onPress={buscarPrimero}
+                accessibilityLabel="Primer turno disponible, con cualquiera del equipo"
               />
-            ))}
-          </View>
+              {profesionales.map((item) => (
+                <Chip
+                  key={item.legajo}
+                  label={`${item.nombre} ${item.apellido}`}
+                  selected={primero === null && item.legajo === legajo}
+                  onPress={() => elegirProfesional(item.legajo)}
+                />
+              ))}
+            </View>
+            {primero?.estado === 'buscando' && (
+              <View style={styles.buscando}>
+                <ActivityIndicator color={colors.violet} />
+                <Text style={styles.hint}>Buscando el primer turno libre...</Text>
+              </View>
+            )}
+            {mostrarEncontrado && (
+              <View style={styles.aviso} accessibilityLiveRegion="polite">
+                <Ionicons name="time-outline" size={20} color={colors.violet} />
+                <View style={styles.flex}>
+                  <Text style={styles.avisoTitle}>Encontramos el primer turno libre</Text>
+                  <Text style={styles.hint}>
+                    {capitalize(formatFechaLarga(encontrado.fecha))} a las {encontrado.hora} con {profesional.nombre} {profesional.apellido}.
+                    Revisalo abajo y confirmá, o elegí otro día y horario.
+                  </Text>
+                </View>
+              </View>
+            )}
+            {primero?.estado === 'listo' && !primero.encontrado && (
+              <View style={[styles.aviso, styles.avisoSinLugar]} accessibilityLiveRegion="polite">
+                <Ionicons name="alert-circle-outline" size={20} color={colors.warning} />
+                <View style={styles.flex}>
+                  <Text style={[styles.avisoTitle, styles.sinLugarTitle]}>No hay turnos libres</Text>
+                  <Text style={styles.hint}>
+                    Nadie del equipo tiene lugar para este servicio en los próximos {MAX_DIAS_ANTICIPACION} días.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </>
         )}
       </Section>
 
@@ -312,6 +417,36 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: spacing.sm,
+  },
+  buscando: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  aviso: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    padding: spacing.sm + 4,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.violet,
+    backgroundColor: colors.surface,
+  },
+  avisoSinLugar: {
+    borderColor: colors.warning,
+    backgroundColor: colors.white,
+  },
+  avisoTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.violetText,
+  },
+  sinLugarTitle: {
+    color: colors.warning,
+  },
+  flex: {
+    flex: 1,
+    gap: spacing.xs,
   },
   // Día completo: gris como lo inactivo (además del 50% de opacidad del Chip deshabilitado)
   dayFull: {
