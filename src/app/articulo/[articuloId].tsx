@@ -281,7 +281,7 @@ export default function ArticuloDetalle() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
         ListFooterComponentStyle={styles.footer}
       />
     </Screen>
@@ -361,13 +361,13 @@ const styles = StyleSheet.create({
   bar: {
     height: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
     borderRadius: radius.full,
-    backgroundColor: colors.violet,
+    backgroundColor: colors.fuchsia,
   },
   buttonsRow: {
     flexDirection: 'row',

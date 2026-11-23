@@ -397,7 +397,7 @@ export default function FichaTecnica() {
   if (isLoading) {
     return (
       <Screen edges={['bottom']}>
-        <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando ficha" />
+        <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando ficha" />
       </Screen>
     );
   }
@@ -684,7 +684,7 @@ export default function FichaTecnica() {
       <Section title="Antecedentes del cabello">
         {anterior && (
           <View style={styles.anterior}>
-            <Ionicons name="time-outline" size={18} color={colors.violet} />
+            <Ionicons name="time-outline" size={18} color={colors.fuchsia} />
             <View style={styles.flex}>
               <Text style={styles.hint}>
                 Precargado de la ficha del {formatFechaNumerica(anterior.fecha)} ({anterior.servicio}). Revisalo: el pelo pudo cambiar.
@@ -811,7 +811,7 @@ export default function FichaTecnica() {
                 {insumo.articuloId !== null ? (
                   <>
                     <View style={styles.stockBox}>
-                      <Ionicons name="cube-outline" size={20} color={colors.violet} />
+                      <Ionicons name="cube-outline" size={20} color={colors.fuchsia} />
                       <View style={styles.flex}>
                         <Text style={styles.stockNombre}>{insumo.producto}</Text>
                         <Text style={styles.detail}>
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   sectionTitle: {
     fontFamily: fonts.subtitle,
@@ -1001,13 +1001,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   insumo: {
     gap: spacing.sm,
     padding: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   addChip: {
     alignSelf: 'flex-start',
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.violet,
+    borderColor: colors.fuchsia,
     backgroundColor: colors.white,
   },
   insumoTexto: {

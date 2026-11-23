@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   servicioInfo: {
     flex: 1,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   total: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   field: {
     gap: spacing.xs,

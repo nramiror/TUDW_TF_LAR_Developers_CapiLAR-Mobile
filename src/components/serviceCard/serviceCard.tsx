@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   tagTextInmediata: {
-    color: colors.violet,
+    color: colors.violetText,
   },
   tagTextEvaluacion: {
     color: colors.peachText,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   reservarText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.violetText,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },

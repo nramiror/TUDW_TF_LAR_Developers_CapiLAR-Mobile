@@ -3,6 +3,7 @@ import { Redirect, Tabs } from 'expo-router';
 
 import { Loader } from '@/components/loader/loader';
 import { useAuth } from '@/context/auth/useAuth';
+import { colors } from '@/theme';
 import { tabScreenOptions } from '@/theme/navigation';
 
 // App del PROFESIONAL: agenda (con las solicitudes pendientes y las fichas técnicas), días y horarios de trabajo, stock con escaneo de QR (F11)
@@ -14,7 +15,8 @@ export default function ProfesionalLayout() {
   if (user?.rol !== 'PROFESIONAL') return <Redirect href="/" />;
 
   return (
-    <Tabs screenOptions={tabScreenOptions}>
+    // Pestaña elegida en fucsia, el color del profesional (como el panel de la web)
+    <Tabs screenOptions={{ ...tabScreenOptions, tabBarActiveTintColor: colors.fuchsia }}>
       <Tabs.Screen
         name="index"
         options={{

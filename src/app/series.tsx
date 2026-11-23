@@ -93,7 +93,7 @@ export default function Series() {
   };
 
   const empty = isLoading ? (
-    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando series" />
+    <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando series" />
   ) : error ? (
     <View style={styles.gap}>
       <FormMessage message={error} />
@@ -158,7 +158,7 @@ export default function Series() {
         ListEmptyComponent={empty}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       />
 
       <ReasonModal

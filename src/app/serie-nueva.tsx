@@ -166,7 +166,7 @@ export default function SerieNueva() {
       {(isLoadingVista || vista) && (
         <Section title="Fechas">
           {isLoadingVista || !vista ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Calculando fechas" />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Calculando fechas" />
           ) : (
             <View style={styles.fechas}>
               {vista.fechas.map((item) => {
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   },
   fechas: {
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
     paddingHorizontal: spacing.md,
   },
   fecha: {

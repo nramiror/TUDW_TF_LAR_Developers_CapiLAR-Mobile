@@ -147,7 +147,7 @@ export default function Stock() {
   );
 
   const empty = isLoading ? (
-    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando stock" />
+    <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando stock" />
   ) : error ? (
     <View style={styles.gap}>
       <FormMessage message={error} />
@@ -176,7 +176,7 @@ export default function Stock() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       />
     </Screen>
   );

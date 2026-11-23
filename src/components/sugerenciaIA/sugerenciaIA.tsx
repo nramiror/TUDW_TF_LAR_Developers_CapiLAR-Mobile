@@ -33,7 +33,7 @@ export const SugerenciaIACard = ({ sugerencia, formulasPrecargadas, onDescartar,
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={18} color={colors.violet} />
+        <Ionicons name="sparkles" size={18} color={colors.fuchsia} />
         <Text style={styles.title}>Sugerencia de IA</Text>
         {sugerencia.simulado && (
           <View style={styles.badge}>
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.violet,
+    borderColor: colors.fuchsia,
     backgroundColor: colors.white,
   },
   header: {
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   badge: {
     paddingHorizontal: spacing.sm,

@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 export interface TileAction {
   label: string;
@@ -11,16 +11,24 @@ export interface TileAction {
 }
 
 // Acceso con ícono a la izquierda y texto corto al lado (perfil, atajos de la agenda)
-export const ActionTile = ({ label, icon, onPress }: TileAction) => (
-  <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && styles.pressed]} accessibilityRole="button">
-    <View style={styles.icon}>
-      <Ionicons name={icon} size={20} color={colors.violet} />
-    </View>
-    <Text style={styles.text} numberOfLines={2}>
-      {label}
-    </Text>
-  </Pressable>
-);
+// El ícono y su círculo, en el color del rol
+export const ActionTile = ({ label, icon, onPress }: TileAction) => {
+  const accent = useAccent();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, pressed && { backgroundColor: accent.surface }]}
+      accessibilityRole="button"
+    >
+      <View style={[styles.icon, { backgroundColor: accent.surface }]}>
+        <Ionicons name={icon} size={20} color={accent.accent} />
+      </View>
+      <Text style={styles.text} numberOfLines={2}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
 
 // Grilla de 2 columnas: cada acceso ocupa casi la mitad y el gap completa el resto
 export const ActionGrid = ({ actions }: { actions: TileAction[] }) => (
@@ -50,16 +58,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
-  pressed: {
-    backgroundColor: colors.surface,
-  },
   icon: {
     width: 36,
     height: 36,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
   },
   text: {
     flex: 1,

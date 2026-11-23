@@ -77,11 +77,11 @@ type MotivoPedido = { tipo: 'rechazar' | 'cancelar'; turno: Turno };
 const PeriodNav = ({ label, onPrev, onNext }: { label: string; onPrev: () => void; onNext: () => void }) => (
   <View style={styles.periodNav}>
     <Pressable onPress={onPrev} hitSlop={spacing.sm} style={styles.arrow} accessibilityRole="button" accessibilityLabel="Anterior">
-      <Ionicons name="chevron-back" size={22} color={colors.violet} />
+      <Ionicons name="chevron-back" size={22} color={colors.fuchsia} />
     </Pressable>
     <Text style={styles.periodLabel}>{label}</Text>
     <Pressable onPress={onNext} hitSlop={spacing.sm} style={styles.arrow} accessibilityRole="button" accessibilityLabel="Siguiente">
-      <Ionicons name="chevron-forward" size={22} color={colors.violet} />
+      <Ionicons name="chevron-forward" size={22} color={colors.fuchsia} />
     </Pressable>
   </View>
 );
@@ -440,7 +440,7 @@ export default function Agenda() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       >
         <Greeting subtitle="Esta es tu agenda" />
         <ActionGrid
@@ -462,7 +462,7 @@ export default function Agenda() {
         {pendientes.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Solicitudes pendientes <Text style={styles.violet}>({pendientes.length})</Text>
+              Solicitudes pendientes <Text style={styles.acento}>({pendientes.length})</Text>
             </Text>
             <Text style={styles.hint}>Los clientes esperan tu respuesta para que su turno quede confirmado.</Text>
             {pendientes.map((turno) => (
@@ -550,7 +550,7 @@ export default function Agenda() {
           </View>
 
           {isLoading ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando agenda" />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando agenda" />
           ) : porDia.size === 0 ? (
             <Text style={styles.empty}>{vacio[filtroFecha]}</Text>
           ) : filtroFecha === 'hoy' ? (
@@ -630,8 +630,8 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.lg,
     color: colors.black,
   },
-  violet: {
-    color: colors.violet,
+  acento: {
+    color: colors.fuchsiaText,
   },
   hint: {
     fontFamily: fonts.body,
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   periodNav: {
     flexDirection: 'row',
@@ -720,9 +720,9 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: radius.full,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
     borderWidth: 1,
-    borderColor: colors.violet,
+    borderColor: colors.fuchsia,
   },
   countMuted: {
     backgroundColor: colors.mutedSurface,
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
   countText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.xs,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   countTextMuted: {
     color: colors.grey,

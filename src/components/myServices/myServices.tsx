@@ -76,7 +76,7 @@ export const MyServices = () => {
       <Text style={styles.hint}>Marcá los servicios que realizás. Los clientes solo pueden reservarte esos.</Text>
 
       {isLoading ? (
-        <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando servicios" />
+        <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando servicios" />
       ) : loadError ? (
         <>
           <FormMessage message={loadError} />
@@ -119,7 +119,7 @@ export const MyServices = () => {
                         value={mine.has(servicio.id)}
                         onValueChange={(on) => toggle(servicio, on)}
                         disabled={saving.has(servicio.id)}
-                        trackColor={{ false: colors.border, true: colors.violet }}
+                        trackColor={{ false: colors.border, true: colors.fuchsia }}
                         thumbColor={colors.white}
                         accessibilityLabel={`Realizo ${servicio.tipo}`}
                       />
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
   },

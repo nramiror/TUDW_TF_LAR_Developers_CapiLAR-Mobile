@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { API_URL } from '@/api/client';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors } from '@/theme';
+import { colors, useAccent } from '@/theme';
 
 interface AuthImageProps extends Omit<ImageProps, 'source'> {
   // Ruta del back, ej. "/fichas/3/fotos/7"
@@ -17,13 +17,14 @@ interface AuthImageProps extends Omit<ImageProps, 'source'> {
 // si falla porque el access token venció (15 min) se renueva una vez y se vuelve a pedir con el nuevo
 export const AuthImage = ({ path, style, ...props }: AuthImageProps) => {
   const { token, renewToken } = useAuth();
+  const { surface } = useAccent();
   // Token con el que ya se reintentó: si falla de nuevo no es la sesión, y así no se renueva en bucle
   const [retriedToken, setRetriedToken] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   if (!token || failed) {
     return (
-      <View style={[style, styles.placeholder]} accessibilityLabel="No se pudo cargar la foto">
+      <View style={[style, styles.placeholder, { backgroundColor: surface }]} accessibilityLabel="No se pudo cargar la foto">
         <Ionicons name="image-outline" size={24} color={colors.greyLight} />
       </View>
     );

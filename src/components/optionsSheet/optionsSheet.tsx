@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -29,6 +29,8 @@ interface OptionsSheetProps {
 // En Android, Alert muestra como mucho 3 botones; esto sirve para más opciones
 export const OptionsSheet = ({ visible, title, options, onClose }: OptionsSheetProps) => {
   const insets = useSafeAreaInsets();
+  // Íconos y lo presionado en el color del rol
+  const accent = useAccent();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -37,11 +39,11 @@ export const OptionsSheet = ({ visible, title, options, onClose }: OptionsSheetP
         {title && <Text style={styles.title}>{title}</Text>}
         {options.map((option) => {
           const color = option.disabled ? colors.grey : option.destructive ? colors.error : colors.black;
-          const iconColor = option.disabled ? colors.grey : option.destructive ? colors.error : colors.violet;
+          const iconColor = option.disabled ? colors.grey : option.destructive ? colors.error : accent.accent;
           return (
             <Pressable
               key={option.label}
-              style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.option, pressed && { backgroundColor: accent.surface }]}
               disabled={option.disabled}
               onPress={() => {
                 onClose();
@@ -59,7 +61,7 @@ export const OptionsSheet = ({ visible, title, options, onClose }: OptionsSheetP
             </Pressable>
           );
         })}
-        <Pressable style={({ pressed }) => [styles.option, styles.cancel, pressed && styles.pressed]} onPress={onClose} accessibilityRole="button">
+        <Pressable style={({ pressed }) => [styles.option, styles.cancel, pressed && { backgroundColor: accent.surface }]} onPress={onClose} accessibilityRole="button">
           <Text style={[styles.label, styles.cancelLabel]}>Cancelar</Text>
         </Pressable>
       </View>
@@ -93,9 +95,6 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
   },
   texts: {
     flex: 1,

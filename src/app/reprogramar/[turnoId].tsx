@@ -141,7 +141,7 @@ export default function Reprogramar() {
 
       <Section title="¿Qué día?">
         {isLoadingFechas ? (
-          <ActivityIndicator color={colors.violet} style={styles.loading} />
+          <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
         ) : fechas.length === 0 ? (
           <Text style={styles.hint}>No tenés días cargados en los próximos 60 días. Cargalos en "Mis horarios".</Text>
         ) : (
@@ -156,7 +156,7 @@ export default function Reprogramar() {
       {fecha && (
         <Section title="¿A qué hora?">
           {isLoadingHorarios ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
           ) : horarios.length === 0 ? (
             <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
           ) : (
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,

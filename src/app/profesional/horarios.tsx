@@ -65,7 +65,7 @@ const HoraStepper = ({ label, value, onChange }: { label: string; value: number;
         accessibilityRole="button"
         accessibilityLabel={`${label}: 30 minutos antes`}
       >
-        <Ionicons name="remove" size={20} color={colors.violet} />
+        <Ionicons name="remove" size={20} color={colors.fuchsia} />
       </Pressable>
       <Text style={styles.stepperValue}>{toHora(value)}</Text>
       <Pressable
@@ -75,7 +75,7 @@ const HoraStepper = ({ label, value, onChange }: { label: string; value: number;
         accessibilityRole="button"
         accessibilityLabel={`${label}: 30 minutos después`}
       >
-        <Ionicons name="add" size={20} color={colors.violet} />
+        <Ionicons name="add" size={20} color={colors.fuchsia} />
       </Pressable>
     </View>
   </View>
@@ -250,7 +250,7 @@ export default function MisHorarios() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       >
         <View style={styles.weekNav}>
           <Pressable
@@ -260,7 +260,7 @@ export default function MisHorarios() {
             accessibilityRole="button"
             accessibilityLabel="Semana anterior"
           >
-            <Ionicons name="chevron-back" size={24} color={colors.violet} />
+            <Ionicons name="chevron-back" size={24} color={colors.fuchsia} />
           </Pressable>
           <Text style={styles.weekTitle}>{capitalize(formatWeek(semana))}</Text>
           <Pressable
@@ -271,7 +271,7 @@ export default function MisHorarios() {
             accessibilityRole="button"
             accessibilityLabel="Semana siguiente"
           >
-            <Ionicons name="chevron-forward" size={24} color={colors.violet} />
+            <Ionicons name="chevron-forward" size={24} color={colors.fuchsia} />
           </Pressable>
         </View>
 
@@ -295,7 +295,7 @@ export default function MisHorarios() {
         {/* La semana día por día: sus horarios o "Libre" */}
         <View style={styles.week}>
           {isLoading ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando horarios" />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando horarios" />
           ) : loadError ? (
             <View style={styles.gap}>
               <FormMessage message={loadError} />
@@ -322,7 +322,7 @@ export default function MisHorarios() {
                             {horario.horarioInicio} a {horario.horarioFin} h
                           </Text>
                           {pasado ? null : deletingId === horario.id ? (
-                            <ActivityIndicator color={colors.violet} />
+                            <ActivityIndicator color={colors.fuchsia} />
                           ) : (
                             <Pressable
                               onPress={() => confirmDelete(horario)}
@@ -363,7 +363,7 @@ export default function MisHorarios() {
                   <Switch
                     value={dias.includes(day)}
                     onValueChange={() => toggleDia(day)}
-                    trackColor={{ false: colors.border, true: colors.violet }}
+                    trackColor={{ false: colors.border, true: colors.fuchsia }}
                     thumbColor={colors.white}
                   />
                 </Pressable>
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   arrow: {
     padding: spacing.sm,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   today: {
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   ranges: {
     flex: 1,
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   summary: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
     lineHeight: 20,
   },
   loading: {

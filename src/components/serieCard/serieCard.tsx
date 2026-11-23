@@ -9,7 +9,7 @@ import { formatFechaCorta } from '@/api/turnos';
 import type { EstadoTurno } from '@/api/turnos';
 import { Chip } from '@/components/chip/chip';
 import { GradientCard } from '@/components/gradientCard/gradientCard';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 // La clienta no ve lo que se cayó (cancelado o rechazado): solo lo que tiene por delante o ya hizo
 const OCULTOS_CLIENTE: EstadoTurno[] = ['CANCELADO', 'RECHAZADO'];
@@ -45,6 +45,9 @@ interface SerieCardProps {
 export const SerieCard = ({ serie, para, onElegirHorario, children }: SerieCardProps) => {
   const estado = ESTADO_SERIE[serie.estado];
   const [abierta, setAbierta] = useState(false);
+  const accent = useAccent();
+  // El violeta de los estados (ej. reprogramado) es el acento: en el profesional pasa a fucsia, con el tono de texto
+  const enAcento = (color: string) => (color === colors.violet ? accent.text : color);
   // El profesional ve todas las fechas; la clienta, las que tienen turno vigente o donde puede elegir otro horario
   const fechas =
     para === 'profesional'
@@ -64,7 +67,7 @@ export const SerieCard = ({ serie, para, onElegirHorario, children }: SerieCardP
     <GradientCard muted={serie.estado === 'BAJA'} style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>{serie.servicio}</Text>
-        <Text style={[styles.estado, { color: estado.color }]}>{estado.label}</Text>
+        <Text style={[styles.estado, { color: enAcento(estado.color) }]}>{estado.label}</Text>
       </View>
       <Text style={styles.detail}>
         {para === 'cliente' ? `Con ${serie.profesional}` : `${serie.cliente.nombre} ${serie.cliente.apellido}`}
@@ -87,8 +90,8 @@ export const SerieCard = ({ serie, para, onElegirHorario, children }: SerieCardP
           accessibilityRole="button"
           accessibilityState={{ expanded: abierta }}
         >
-          <Text style={styles.toggleText}>{abierta ? 'Ocultar fechas' : `Ver fechas (${fechas.length})`}</Text>
-          <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={16} color={colors.violet} />
+          <Text style={[styles.toggleText, { color: accent.text }]}>{abierta ? 'Ocultar fechas' : `Ver fechas (${fechas.length})`}</Text>
+          <Ionicons name={abierta ? 'chevron-up' : 'chevron-down'} size={16} color={accent.accent} />
           {ocupadas > 0 && (
             <Text style={styles.ocupadas}>
               {ocupadas} {ocupadas === 1 ? 'fecha ocupada' : 'fechas ocupadas'}
@@ -108,7 +111,7 @@ export const SerieCard = ({ serie, para, onElegirHorario, children }: SerieCardP
                 <View style={styles.fechaRow}>
                   <Text style={styles.fechaDia}>{formatFechaCorta(fecha.fecha)}</Text>
                   {turno && estadoTurno ? (
-                    <Text style={[styles.fechaEstado, { color: estadoTurno.color }]}>
+                    <Text style={[styles.fechaEstado, { color: enAcento(estadoTurno.color) }]}>
                       {turno.horaInicio} h · {estadoTurno.label}
                     </Text>
                   ) : (
@@ -161,7 +164,6 @@ const styles = StyleSheet.create({
   toggleText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.xs,
-    color: colors.violet,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },

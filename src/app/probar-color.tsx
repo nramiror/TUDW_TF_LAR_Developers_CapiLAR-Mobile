@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   aiStrong: {
     fontFamily: fonts.bodySemiBold,
-    color: colors.violet,
+    color: colors.violetText,
   },
   card: {
     gap: spacing.md,

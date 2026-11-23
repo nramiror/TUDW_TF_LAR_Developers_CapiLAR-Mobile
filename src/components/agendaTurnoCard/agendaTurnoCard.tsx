@@ -13,7 +13,7 @@ import { colors, fonts, fontSizes, spacing } from '@/theme';
 const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   PENDIENTE: { label: 'Solicitud pendiente', color: colors.warning },
   CONFIRMADO: { label: 'Confirmado', color: colors.success },
-  REPROGRAMADO: { label: 'Esperando respuesta del cliente', color: colors.violet },
+  REPROGRAMADO: { label: 'Esperando respuesta del cliente', color: colors.fuchsiaText },
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'Rechazado', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
@@ -52,7 +52,7 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, hideEstado = false, 
       </Text>
       {turno.serieId || turno.serieOrigenId ? (
         <View style={styles.row}>
-          <Ionicons name="repeat-outline" size={16} color={colors.violet} />
+          <Ionicons name="repeat-outline" size={16} color={colors.fuchsia} />
           <Text style={[styles.detail, styles.serie]}>{turno.serieId ? 'Turno de una serie' : 'Empezó una serie'}</Text>
         </View>
       ) : null}
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   time: {
     fontFamily: fonts.subtitle,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   date: {
     fontFamily: fonts.bodyMedium,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   serie: {
     fontFamily: fonts.bodyMedium,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   unverified: {
     color: colors.warning,
