@@ -9,27 +9,29 @@ interface ButtonProps {
   children: ReactNode;
   onPress?: () => void;
   // Mismos nombres que el Button de la web
-  variant?: 'primario' | 'secundario' | 'grey';
+  variant?: 'primario' | 'secundario' | 'grey' | 'peligro';
   // sm: acciones dentro de una tarjeta (ej. "Cancelar turno")
   size?: 'md' | 'sm';
   disabled?: boolean;
   // Muestra un spinner y no deja tocar (mientras se espera al back)
   isLoading?: boolean;
+  // Texto en negrita (ej. la acción de un aviso de AppAlert)
+  bold?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
 const BORDE = 1.5;
 
-// primario: fondo degradado. secundario: borde degradado y fondo blanco. grey: borde y texto gris.
+// primario: fondo degradado. secundario: borde degradado y fondo blanco. grey: borde y texto gris. peligro: borde y texto rojos, fondo blanco (confirmar algo que no se deshace, ej. en AppAlert).
 // Sin sombra y con borde fino (pedido de Andrea tras la demo del 75%: los botones se veían toscos).
 // El degradado y el blanco del secundario son capas de fondo pegadas a los bordes (absolutas) y el texto va en el flujo
 // normal: así el botón mide lo que su texto. Antes las capas usaban flexGrow y, cuando el botón no ocupaba todo el ancho,
 // Android lo estiraba hacia abajo como un recuadro vacío (pasó con "Ver turnos" del rango y con "Cerrar sesión")
-export const Button = ({ children, onPress, variant = 'primario', size = 'md', disabled = false, isLoading = false, style }: ButtonProps) => {
+export const Button = ({ children, onPress, variant = 'primario', size = 'md', disabled = false, isLoading = false, bold = false, style }: ButtonProps) => {
   const isDisabled = disabled || isLoading;
   // El borde degradado es el de marca en los dos roles; el texto del secundario va en el color del rol
   const { text: accentText } = useAccent();
-  const textColor = variant === 'primario' ? colors.white : variant === 'grey' ? colors.grey : accentText;
+  const textColor = variant === 'primario' ? colors.white : variant === 'peligro' ? colors.error : variant === 'grey' ? colors.grey : accentText;
 
   return (
     <Pressable
@@ -41,12 +43,13 @@ export const Button = ({ children, onPress, variant = 'primario', size = 'md', d
         styles.base,
         size === 'sm' ? styles.sm : styles.md,
         variant === 'grey' && styles.grey,
+        variant === 'peligro' && styles.peligro,
         pressed && styles.pressed,
         isDisabled && styles.disabled,
         style,
       ]}
     >
-      {variant !== 'grey' && (
+      {(variant === 'primario' || variant === 'secundario') && (
         <LinearGradient
           colors={gradient.colors}
           start={gradient.start}
@@ -61,7 +64,7 @@ export const Button = ({ children, onPress, variant = 'primario', size = 'md', d
       {isLoading ? (
         <ActivityIndicator color={textColor} size="small" />
       ) : (
-        <Text style={[styles.text, size === 'sm' && styles.textSm, { color: textColor }]}>{children}</Text>
+        <Text style={[styles.text, size === 'sm' && styles.textSm, bold && styles.bold, { color: textColor }]}>{children}</Text>
       )}
     </Pressable>
   );
@@ -90,6 +93,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
+  peligro: {
+    borderWidth: BORDE,
+    borderColor: colors.error,
+    backgroundColor: colors.white,
+  },
   layer: {
     borderRadius: radius.md,
   },
@@ -113,6 +121,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
+  },
+  bold: {
+    fontFamily: fonts.bodyBold,
   },
   textSm: {
     fontSize: fontSizes.sm,
