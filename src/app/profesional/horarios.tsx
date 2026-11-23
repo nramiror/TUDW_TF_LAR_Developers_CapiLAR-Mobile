@@ -2,12 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { MAX_HORAS_JORNADA, createAvailabilityRequest, deleteAvailabilityRequest, getAvailabilityRequest } from '@/api/professionals';
 import type { Disponibilidad } from '@/api/professionals';
 import { MAX_DIAS_ANTICIPACION, addDays, formatFechaCorta, formatWeek, fromIsoDate, startOfWeek, toIsoDate } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -200,7 +201,7 @@ export default function MisHorarios() {
         porHorario.set(key, [...(porHorario.get(key) ?? []), fecha]);
       }
       if (porHorario.size === 0) {
-        Alert.alert('Nada para copiar', 'La semana siguiente ya tiene esos horarios cargados o queda fuera de los 60 días.');
+        showAlert('Nada para copiar', 'La semana siguiente ya tiene esos horarios cargados o queda fuera de los 60 días.');
         return;
       }
       for (const [key, fechasDelHorario] of porHorario) {
@@ -208,7 +209,7 @@ export default function MisHorarios() {
         await createAvailabilityRequest(token, legajo, fechasDelHorario, desde, hasta);
       }
       if (salteados > 0) {
-        Alert.alert('Semana copiada', `Se saltearon ${salteados} horarios que ya estaban cargados o quedaban fuera de los 60 días.`);
+        showAlert('Semana copiada', `Se saltearon ${salteados} horarios que ya estaban cargados o quedaban fuera de los 60 días.`);
       }
       irASemana(siguiente);
     } catch (err) {
@@ -220,7 +221,7 @@ export default function MisHorarios() {
   };
 
   const confirmDelete = (horario: Disponibilidad) => {
-    Alert.alert(
+    showAlert(
       'Quitar horario',
       `¿Querés quitar el horario de ${horario.horarioInicio} a ${horario.horarioFin} del ${formatFechaCorta(horario.fecha)}?`,
       [
@@ -235,7 +236,7 @@ export default function MisHorarios() {
               setHorarios((prev) => prev.filter((item) => item.id !== horario.id));
             } catch (err) {
               // 409: hay turnos en ese horario
-              Alert.alert('No se pudo quitar', errorMessage(err));
+              showAlert('No se pudo quitar', errorMessage(err));
             } finally {
               setDeletingId(null);
             }

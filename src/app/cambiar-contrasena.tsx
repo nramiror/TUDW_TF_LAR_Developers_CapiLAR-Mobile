@@ -1,9 +1,10 @@
 import { Redirect, router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { TextInput } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -62,7 +63,7 @@ export default function CambiarContrasena() {
     setIsLoading(true);
     try {
       await changePassword(values.actual, values.nueva);
-      Alert.alert('Contraseña actualizada', 'Si tenías la sesión abierta en otro dispositivo, ahí vas a tener que volver a entrar.', [
+      showAlert('Contraseña actualizada', 'Si tenías la sesión abierta en otro dispositivo, ahí vas a tener que volver a entrar.', [
         { text: 'Listo', onPress: () => router.back() },
       ]);
     } catch (err) {

@@ -1,10 +1,11 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { createArticuloRequest, createMarcaRequest, getMarcasRequest, idRepetido, porMarca, sinIdRepetido } from '@/api/articulos';
 import type { ArticuloData, Marca, MarcaData } from '@/api/articulos';
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ArticuloForm } from '@/components/articuloForm/articuloForm';
 import { Button } from '@/components/button/button';
 import { Screen } from '@/components/screen/screen';
@@ -44,7 +45,7 @@ export default function ArticuloNuevo() {
     setRepetidoId(null);
     try {
       const creado = await createArticuloRequest(token, data);
-      Alert.alert('Artículo creado', `${creado.nombre} ya está en el stock.`);
+      showAlert('Artículo creado', `${creado.nombre} ya está en el stock.`);
       router.replace({ pathname: '/articulo/[articuloId]', params: { articuloId: creado.id } });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {

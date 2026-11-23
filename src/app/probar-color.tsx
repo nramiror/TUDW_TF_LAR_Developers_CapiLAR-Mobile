@@ -4,12 +4,13 @@ import { CameraType } from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { CARTA_DE_COLORES, esColoracion, INTENSIDAD_POR_DEFECTO, previewHairColorRequest, SELFIE_LIMITS } from '@/api/hairColor';
 import type { ColorCarta, VistaPreviaColor } from '@/api/hairColor';
 import { getServicesRequest } from '@/api/services';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { BeforeAfter } from '@/components/beforeAfter/beforeAfter';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
@@ -135,9 +136,9 @@ export default function ProbarColor() {
     try {
       const result = await saveImageToGallery(resultado.url, nombreArchivo(resultado.color));
       if (result === 'ok') {
-        Alert.alert('Foto guardada', 'La encontrás en la galería de tu celular.');
+        showAlert('Foto guardada', 'La encontrás en la galería de tu celular.');
       } else {
-        Alert.alert('Sin permiso para guardar', 'Para guardar la foto, permitile a CapiLAR acceder a tus fotos desde los ajustes.', [
+        showAlert('Sin permiso para guardar', 'Para guardar la foto, permitile a CapiLAR acceder a tus fotos desde los ajustes.', [
           { text: 'Ahora no', style: 'cancel' },
           { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
         ]);
@@ -145,7 +146,7 @@ export default function ProbarColor() {
     } catch (err) {
       if (__DEV__) console.warn('[probar-color] guardar', err);
       // Lo más común: la imagen de YouCam ya venció (dura 2 horas) o no hay conexión
-      Alert.alert('No se pudo guardar', 'Revisá tu conexión. Si pasaron más de 2 horas, la imagen ya venció: probá el color de nuevo.');
+      showAlert('No se pudo guardar', 'Revisá tu conexión. Si pasaron más de 2 horas, la imagen ya venció: probá el color de nuevo.');
     } finally {
       setIsSaving(false);
     }

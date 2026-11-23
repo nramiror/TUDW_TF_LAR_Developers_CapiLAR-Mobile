@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -18,6 +18,7 @@ import {
 } from '@/api/articulos';
 import type { Articulo, ArticuloData, Marca, MarcaData } from '@/api/articulos';
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ArticuloForm } from '@/components/articuloForm/articuloForm';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -92,7 +93,7 @@ export const ArticuloPicker = ({ visible, onSelect, onClose }: ArticuloPickerPro
       const creado = await createArticuloRequest(token, data);
       setArticulos((prev) => [...prev, creado]);
       onSelect(creado);
-      Alert.alert('Artículo creado', `${creado.nombre} ya está en el stock.`);
+      showAlert('Artículo creado', `${creado.nombre} ya está en el stock.`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         const id = idRepetido(err.message);

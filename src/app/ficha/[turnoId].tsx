@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatMarca, getArticulosRequest } from '@/api/articulos';
 import type { Articulo } from '@/api/articulos';
@@ -44,6 +44,7 @@ import type {
 import { parseTratamientos, serializeTratamientos } from '@/api/tratamientos';
 import { formatPrice } from '@/api/services';
 import { formatFechaLarga, formatFechaNumerica } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ArticuloPicker } from '@/components/articuloPicker/articuloPicker';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
@@ -502,7 +503,7 @@ export default function FichaTecnica() {
   };
 
   const guardar = async () => {
-    if (await save()) Alert.alert('Ficha guardada', 'Podés seguir editándola hasta que marques el turno como completado.');
+    if (await save()) showAlert('Ficha guardada', 'Podés seguir editándola hasta que marques el turno como completado.');
   };
 
   // F15: si la IA marcó alertas, se muestran otra vez antes de guardar (advertencia antes de confirmar la ficha)
@@ -512,7 +513,7 @@ export default function FichaTecnica() {
       guardar();
       return;
     }
-    Alert.alert('Revisá las alertas de la IA', alertas.map((alerta) => `• ${alerta}`).join('\n\n'), [
+    showAlert('Revisá las alertas de la IA', alertas.map((alerta) => `• ${alerta}`).join('\n\n'), [
       { text: 'Volver a la ficha', style: 'cancel' },
       {
         text: 'Ya las revisé',
@@ -548,7 +549,7 @@ export default function FichaTecnica() {
     };
 
     if (nuevas.length > 0 && formRef.current.formulas.some(formulaConDatos)) {
-      Alert.alert(
+      showAlert(
         'Fórmulas sugeridas',
         `La IA sugiere ${nuevas.length === 1 ? 'una fórmula' : `${nuevas.length} fórmulas`} con productos del stock. ¿Querés reemplazar las que ya cargaste?`,
         [
@@ -593,7 +594,7 @@ export default function FichaTecnica() {
     const actual = form.observacionesInternas.trim();
     if (actual.includes(texto)) return;
     setField('observacionesInternas', (actual ? `${actual}\n\n${texto}` : texto).slice(0, MAX_TEXTO));
-    Alert.alert('Análisis copiado', 'Quedó en "Observaciones internas" y se guarda con la ficha.');
+    showAlert('Análisis copiado', 'Quedó en "Observaciones internas" y se guarda con la ficha.');
   };
 
   // Vuelve a dejar vacío el diagnóstico precargado de la ficha anterior
@@ -614,7 +615,7 @@ export default function FichaTecnica() {
       // Solo se toman las fotos, para no pisar lo que se esté editando sin guardar
       setFicha((prev) => (prev ? { ...prev, fotos: updated.fotos } : updated));
     } catch (err) {
-      Alert.alert('No se pudo subir la foto', errorMessage(err));
+      showAlert('No se pudo subir la foto', errorMessage(err));
     } finally {
       setBusyTipo(null);
     }
@@ -638,7 +639,7 @@ export default function FichaTecnica() {
 
   const removePhoto = (foto: FotoFicha) => {
     if (!ficha) return;
-    Alert.alert('Quitar foto', '¿Querés quitar esta foto de la ficha?', [
+    showAlert('Quitar foto', '¿Querés quitar esta foto de la ficha?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Quitar',
@@ -648,7 +649,7 @@ export default function FichaTecnica() {
             const updated = await deleteFichaPhotoRequest(token, ficha.id, foto.id);
             setFicha((prev) => (prev ? { ...prev, fotos: updated.fotos } : updated));
           } catch (err) {
-            Alert.alert('No se pudo quitar la foto', errorMessage(err));
+            showAlert('No se pudo quitar la foto', errorMessage(err));
           }
         },
       },

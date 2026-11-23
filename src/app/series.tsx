@@ -1,10 +1,11 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { endSerieRequest, getSeriesRequest, reactivateSerieRequest, suspendSerieRequest } from '@/api/series';
 import type { EstadoSerie, Serie } from '@/api/series';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { ReasonModal } from '@/components/reasonModal/reasonModal';
@@ -70,7 +71,7 @@ export default function Series() {
       setSeries((prev) => ordenar(prev.map((item) => (item.id === updated.id ? updated : item))));
       setMotivoPedido(null);
     } catch (err) {
-      Alert.alert(failTitle, errorMessage(err));
+      showAlert(failTitle, errorMessage(err));
       load();
     } finally {
       setBusyId(null);
@@ -79,7 +80,7 @@ export default function Series() {
 
   const reactivar = (serie: Serie) => {
     if (!token) return;
-    Alert.alert('Reactivar serie', `Se vuelven a reservar las fechas que quedan de ${serie.cliente.nombre}, y le llega un mail.`, [
+    showAlert('Reactivar serie', `Se vuelven a reservar las fechas que quedan de ${serie.cliente.nombre}, y le llega un mail.`, [
       { text: 'Volver', style: 'cancel' },
       { text: 'Reactivar', onPress: () => run(serie, () => reactivateSerieRequest(token, serie.id), 'No se pudo reactivar') },
     ]);

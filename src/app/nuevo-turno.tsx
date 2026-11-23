@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatAlergias } from '@/api/alergias';
 import { ApiError } from '@/api/client';
@@ -12,6 +12,7 @@ import type { Servicio } from '@/api/services';
 import { createTurnoRequest, formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, toIsoDate } from '@/api/turnos';
 import { searchClientesRequest } from '@/api/users';
 import type { ClienteResumen } from '@/api/users';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { CategoriaChips } from '@/components/categoriaChips/categoriaChips';
 import { Chip } from '@/components/chip/chip';
@@ -174,7 +175,7 @@ export default function NuevoTurno() {
     setIsSaving(true);
     try {
       await createTurnoRequest(token, { fecha, horaInicio: hora, items: [{ servicioId, legajo }], clienteId: cliente.id });
-      Alert.alert(
+      showAlert(
         'Turno cargado',
         `${cliente.nombre} ${cliente.apellido} tiene turno confirmado el ${formatFechaLarga(fecha)} a las ${hora} h. Le avisamos por mail.`,
         [{ text: 'Volver a la agenda', onPress: () => router.back() }],

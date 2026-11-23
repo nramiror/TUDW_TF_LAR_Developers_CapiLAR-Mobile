@@ -2,12 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { FRECUENCIAS, FRECUENCIA_LABEL, createSerieRequest, fechasFinPosibles, previewSerieRequest } from '@/api/series';
 import type { FechaPlanificada, FrecuenciaSerie, VistaPreviaSerie } from '@/api/series';
 import { formatFechaCorta, formatFechaLarga } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -117,7 +118,7 @@ export default function SerieNueva() {
     try {
       const serie = await createSerieRequest(token, { turnoId, turnoDetalleId, frecuencia, fechaFin });
       const reservados = serie.fechas.filter((item) => item.turnoId !== null).length;
-      Alert.alert(
+      showAlert(
         'Serie creada',
         `Se reservaron ${reservados} ${reservados === 1 ? 'turno' : 'turnos'}. A ${params.cliente} le llega un mail con todas las fechas.` +
           (sinHorario ? ' Acordate de cargar tu horario en los días que te faltan.' : ''),

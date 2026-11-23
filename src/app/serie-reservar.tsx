@@ -1,10 +1,11 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { createTurnoRequest, formatFechaLarga, getHorariosLibresRequest } from '@/api/turnos';
 import type { TurnoItem } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -77,7 +78,7 @@ export default function SerieReservar() {
     setIsSaving(true);
     try {
       await createTurnoRequest(token, { fecha: params.fecha, horaInicio: hora, items, serieId });
-      Alert.alert('Turno reservado', `Te esperamos el ${formatFechaLarga(params.fecha)} a las ${hora} h.`, [
+      showAlert('Turno reservado', `Te esperamos el ${formatFechaLarga(params.fecha)} a las ${hora} h.`, [
         { text: 'Volver a mis series', onPress: () => router.back() },
       ]);
     } catch (err) {

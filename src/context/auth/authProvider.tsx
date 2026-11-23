@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Alert } from 'react-native';
 
 import { changePasswordRequest, loginRequest, logoutRequest, meRequest, refreshRequest, registerRequest } from '@/api/auth';
 import type { AuthResponse, RegisterData, Rol, Usuario } from '@/api/auth';
 import { ApiError, SESSION_EXPIRED_MESSAGE, setTokenRefresher } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 
 import { AuthContext } from './authContext';
 import { clearStoredTokens, getStoredRefreshToken, getStoredToken, storeTokens } from './tokenStorage';
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const wasLoggedIn = isLoggedInRef.current;
       await clearSession();
       // Al layout del rol le alcanza con que no haya usuario para volver a la bienvenida; el aviso explica por qué
-      if (wasLoggedIn) Alert.alert('Sesión vencida', SESSION_EXPIRED_MESSAGE);
+      if (wasLoggedIn) showAlert('Sesión vencida', SESSION_EXPIRED_MESSAGE);
       return null;
     }
   }, [applySession, clearSession]);
