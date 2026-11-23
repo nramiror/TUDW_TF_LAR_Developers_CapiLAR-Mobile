@@ -127,6 +127,19 @@ export const getDiasSinLugarRequest = async (token: string, fechas: string[], it
   return sinLugar;
 };
 
+// "Primer turno disponible" (copiado de la web, PWA-295): el primer día de `fechas` (ordenadas) con algún horario libre
+// y su primer horario, o null si no hay. De a 4 días a la vez; un día que falla (ej. 409 porque ya tiene ese servicio)
+// se saltea
+export const buscarPrimerHorarioLibre = async (token: string, fechas: string[], items: TurnoItem[]) => {
+  for (let i = 0; i < fechas.length; i += 4) {
+    const tanda = fechas.slice(i, i + 4);
+    const respuestas = await Promise.all(tanda.map((fecha) => getHorariosLibresRequest(token, fecha, items).catch(() => null)));
+    const conLugar = respuestas.find((r) => r && r.horarios.length > 0);
+    if (conLugar) return { fecha: conLugar.fecha, hora: conLugar.horarios[0] };
+  }
+  return null;
+};
+
 // CLIENTE: nace CONFIRMADO, o PENDIENTE si algún servicio requiere evaluación (403 si no verificó su email).
 // PROFESIONAL / ADMIN con clienteId: queda CONFIRMADO
 export const createTurnoRequest = (token: string, data: CreateTurnoData) =>
