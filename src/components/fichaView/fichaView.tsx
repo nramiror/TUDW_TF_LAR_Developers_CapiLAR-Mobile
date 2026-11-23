@@ -1,10 +1,13 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { NIVEL_LABEL, TIPO_DE_PELO_LABEL, UNIDAD_LABEL, VOLUMEN_LABEL } from '@/api/fichas';
+import { NIVEL_LABEL, TIPO_DE_PELO_LABEL, UNIDAD_LABEL, VOLUMEN_LABEL, insumosDeFicha, totalDeProductos } from '@/api/fichas';
 import type { Ficha, FormulaInsumo } from '@/api/fichas';
+import { parseTratamientos } from '@/api/tratamientos';
 import { formatFechaLarga } from '@/api/turnos';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
+import { TotalProductos } from '@/components/totalProductos/totalProductos';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -34,6 +37,34 @@ const Dato = ({ label, value }: { label: string; value: string | null | undefine
     </View>
   ) : null;
 
+// Las filas (tratamiento, frecuencia y última vez) y, debajo, lo que no tiene ese formato (fichas viejas o
+// texto libre), como en la web
+const TratamientosPrevios = ({ texto }: { texto: string | null }) => {
+  const { filas, notas } = parseTratamientos(texto);
+  if (filas.length === 0 && !notas) return null;
+  return (
+    <View style={styles.tratamientos}>
+      <Text style={styles.datoLabel}>Tratamientos previos</Text>
+      {filas.map((fila, index) => (
+        <View key={index} style={styles.tratamiento}>
+          <Text style={styles.tratamientoNombre}>{fila.tratamiento}</Text>
+          {(fila.frecuencia || fila.ultimaVez) && (
+            <Text style={styles.detail}>
+              {[fila.frecuencia, fila.ultimaVez && `Última vez ${fila.ultimaVez}`].filter(Boolean).join(' · ')}
+            </Text>
+          )}
+        </View>
+      ))}
+      {notas !== '' && (
+        <View style={styles.tratamiento}>
+          {filas.length > 0 && <Text style={styles.datoLabel}>Otros datos</Text>}
+          <Text style={styles.text}>{notas}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 interface FichaViewProps {
   ficha: Ficha;
 }
@@ -46,9 +77,8 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
     ['Canas', ficha.porcentajeCanas !== null ? `${ficha.porcentajeCanas}%` : null],
     ['Tipo de pelo', ficha.tipoDePelo && TIPO_DE_PELO_LABEL[ficha.tipoDePelo]],
     ['Volumen', ficha.volumenDePelo && VOLUMEN_LABEL[ficha.volumenDePelo]],
-    ['Tratamientos previos', ficha.tratamientosPrevios],
   ] as const;
-  const sinAntecedentes = antecedentes.every(([, value]) => !value);
+  const sinAntecedentes = antecedentes.every(([, value]) => !value) && !ficha.tratamientosPrevios?.trim();
 
   return (
     <View style={styles.container}>
@@ -70,7 +100,12 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
         {sinAntecedentes ? (
           <Text style={styles.empty}>No se cargaron</Text>
         ) : (
-          antecedentes.map(([label, value]) => <Dato key={label} label={label} value={value} />)
+          <>
+            {antecedentes.map(([label, value]) => (
+              <Dato key={label} label={label} value={value} />
+            ))}
+            <TratamientosPrevios texto={ficha.tratamientosPrevios} />
+          </>
         )}
       </Section>
 
@@ -86,25 +121,43 @@ export const FichaView = ({ ficha }: FichaViewProps) => {
               {(formula.oxidanteVolumen !== null || formula.tiempoPoseMin !== null) && (
                 <Text style={styles.detail}>
                   {[
-                    formula.oxidanteVolumen !== null && `Oxidante ${formula.oxidanteVolumen} vol.`,
+                    formula.oxidanteVolumen !== null && `Oxidante ${formula.oxidanteVolumen} vol`,
                     formula.tiempoPoseMin !== null && `Pose ${formula.tiempoPoseMin} min`,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </Text>
               )}
-              {formula.insumos.map((insumo, i) => (
-                <Text key={insumo.id ?? i} style={styles.insumo}>
-                  • {formatInsumo(insumo)}
-                </Text>
-              ))}
+              {formula.insumos.map((insumo, i) =>
+                // F11: los del stock llevan la cajita (se descuentan al completar el turno)
+                insumo.articuloId ? (
+                  <View key={insumo.id ?? i} style={styles.insumoRow} accessibilityLabel={`${formatInsumo(insumo)}, del stock`}>
+                    <Ionicons name="cube-outline" size={14} color={colors.fuchsia} style={styles.insumoIcon} />
+                    <Text style={[styles.insumo, styles.flex]}>{formatInsumo(insumo)}</Text>
+                  </View>
+                ) : (
+                  <Text key={insumo.id ?? i} style={styles.insumo}>
+                    • {formatInsumo(insumo)}
+                  </Text>
+                ),
+              )}
             </View>
           ))
         )}
+        {ficha.formulas.some((formula) => formula.insumos.some((insumo) => insumo.articuloId)) && (
+          <View style={styles.insumoRow}>
+            <Ionicons name="cube-outline" size={14} color={colors.fuchsia} style={styles.insumoIcon} />
+            <Text style={[styles.detail, styles.flex]}>
+              {ficha.cerradaEn ? 'Producto del stock: se descontó al completar el turno.' : 'Producto del stock: se descuenta al completar el turno.'}
+            </Text>
+          </View>
+        )}
+        {/* El costo real se guarda al completar el turno */}
+        {ficha.cerradaEn && <TotalProductos {...totalDeProductos(insumosDeFicha(ficha))} />}
       </Section>
 
       <Section title="Fotos">
-        <FichaFotos fichaId={ficha.id} fotos={ficha.fotos} />
+        <FichaFotos fichaId={ficha.id} fotos={ficha.fotos} servicio={ficha.servicio} fecha={ficha.fecha} />
       </Section>
 
       <Section title="Indicaciones para la clienta">
@@ -147,7 +200,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   sectionTitle: {
     fontFamily: fonts.subtitle,
@@ -171,18 +224,44 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.black,
   },
+  tratamientos: {
+    gap: spacing.xs,
+  },
+  tratamiento: {
+    gap: 2,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+  },
+  tratamientoNombre: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
   formula: {
     gap: 2,
   },
   formulaTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   insumo: {
     fontFamily: fonts.body,
     fontSize: fontSizes.sm,
     color: colors.black,
+  },
+  insumoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+  },
+  // Alineada con la primera línea del texto
+  insumoIcon: {
+    marginTop: 3,
+  },
+  flex: {
+    flex: 1,
   },
   detail: {
     fontFamily: fonts.body,

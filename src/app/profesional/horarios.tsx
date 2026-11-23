@@ -2,14 +2,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { MAX_HORAS_JORNADA, createAvailabilityRequest, deleteAvailabilityRequest, getAvailabilityRequest } from '@/api/professionals';
 import type { Disponibilidad } from '@/api/professionals';
 import { MAX_DIAS_ANTICIPACION, addDays, formatFechaCorta, formatWeek, fromIsoDate, startOfWeek, toIsoDate } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
-import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
@@ -19,13 +19,13 @@ const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 
 
 // Días de la semana en el orden del salón (getDay(): 0 es domingo)
 const DIAS = [
-  { day: 1, label: 'Lun' },
-  { day: 2, label: 'Mar' },
-  { day: 3, label: 'Mié' },
-  { day: 4, label: 'Jue' },
-  { day: 5, label: 'Vie' },
-  { day: 6, label: 'Sáb' },
-  { day: 0, label: 'Dom' },
+  { day: 1, label: 'Lunes' },
+  { day: 2, label: 'Martes' },
+  { day: 3, label: 'Miércoles' },
+  { day: 4, label: 'Jueves' },
+  { day: 5, label: 'Viernes' },
+  { day: 6, label: 'Sábado' },
+  { day: 0, label: 'Domingo' },
 ];
 
 // Las horas se eligen de a 30 minutos, de 06:00 a 23:00
@@ -66,7 +66,7 @@ const HoraStepper = ({ label, value, onChange }: { label: string; value: number;
         accessibilityRole="button"
         accessibilityLabel={`${label}: 30 minutos antes`}
       >
-        <Ionicons name="remove" size={20} color={colors.violet} />
+        <Ionicons name="remove" size={20} color={colors.fuchsia} />
       </Pressable>
       <Text style={styles.stepperValue}>{toHora(value)}</Text>
       <Pressable
@@ -76,7 +76,7 @@ const HoraStepper = ({ label, value, onChange }: { label: string; value: number;
         accessibilityRole="button"
         accessibilityLabel={`${label}: 30 minutos después`}
       >
-        <Ionicons name="add" size={20} color={colors.violet} />
+        <Ionicons name="add" size={20} color={colors.fuchsia} />
       </Pressable>
     </View>
   </View>
@@ -201,7 +201,7 @@ export default function MisHorarios() {
         porHorario.set(key, [...(porHorario.get(key) ?? []), fecha]);
       }
       if (porHorario.size === 0) {
-        Alert.alert('Nada para copiar', 'La semana siguiente ya tiene esos horarios cargados o queda fuera de los 60 días.');
+        showAlert('Nada para copiar', 'La semana siguiente ya tiene esos horarios cargados o queda fuera de los 60 días.');
         return;
       }
       for (const [key, fechasDelHorario] of porHorario) {
@@ -209,7 +209,7 @@ export default function MisHorarios() {
         await createAvailabilityRequest(token, legajo, fechasDelHorario, desde, hasta);
       }
       if (salteados > 0) {
-        Alert.alert('Semana copiada', `Se saltearon ${salteados} horarios que ya estaban cargados o quedaban fuera de los 60 días.`);
+        showAlert('Semana copiada', `Se saltearon ${salteados} horarios que ya estaban cargados o quedaban fuera de los 60 días.`);
       }
       irASemana(siguiente);
     } catch (err) {
@@ -221,7 +221,7 @@ export default function MisHorarios() {
   };
 
   const confirmDelete = (horario: Disponibilidad) => {
-    Alert.alert(
+    showAlert(
       'Quitar horario',
       `¿Querés quitar el horario de ${horario.horarioInicio} a ${horario.horarioFin} del ${formatFechaCorta(horario.fecha)}?`,
       [
@@ -236,7 +236,7 @@ export default function MisHorarios() {
               setHorarios((prev) => prev.filter((item) => item.id !== horario.id));
             } catch (err) {
               // 409: hay turnos en ese horario
-              Alert.alert('No se pudo quitar', errorMessage(err));
+              showAlert('No se pudo quitar', errorMessage(err));
             } finally {
               setDeletingId(null);
             }
@@ -251,7 +251,7 @@ export default function MisHorarios() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       >
         <View style={styles.weekNav}>
           <Pressable
@@ -261,7 +261,7 @@ export default function MisHorarios() {
             accessibilityRole="button"
             accessibilityLabel="Semana anterior"
           >
-            <Ionicons name="chevron-back" size={24} color={colors.violet} />
+            <Ionicons name="chevron-back" size={24} color={colors.fuchsia} />
           </Pressable>
           <Text style={styles.weekTitle}>{capitalize(formatWeek(semana))}</Text>
           <Pressable
@@ -272,24 +272,31 @@ export default function MisHorarios() {
             accessibilityRole="button"
             accessibilityLabel="Semana siguiente"
           >
-            <Ionicons name="chevron-forward" size={24} color={colors.violet} />
+            <Ionicons name="chevron-forward" size={24} color={colors.fuchsia} />
           </Pressable>
         </View>
 
         <View style={styles.buttonsRow}>
-          <Chip label="Hoy" selected={esEstaSemana} onPress={() => irASemana(startOfWeek(new Date()))} />
-          <Chip
-            label={isCopying ? 'Copiando…' : 'Copiar a la próxima semana'}
+          {/* Botones chicos y más cuadrados en vez de pastillas (pedido de Andrea) */}
+          <Button variant="grey" size="sm" onPress={() => irASemana(startOfWeek(new Date()))} disabled={esEstaSemana}>
+            Hoy
+          </Button>
+          <Button
+            variant="grey"
+            size="sm"
             onPress={copiarALaSiguiente}
-            disabled={isCopying || horarios.length === 0 || !hayMasAdelante}
+            isLoading={isCopying}
+            disabled={horarios.length === 0 || !hayMasAdelante}
             style={styles.flex}
-          />
+          >
+            Copiar a la próxima semana
+          </Button>
         </View>
 
         {/* La semana día por día: sus horarios o "Libre" */}
         <View style={styles.week}>
           {isLoading ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando horarios" />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando horarios" />
           ) : loadError ? (
             <View style={styles.gap}>
               <FormMessage message={loadError} />
@@ -316,7 +323,7 @@ export default function MisHorarios() {
                             {horario.horarioInicio} a {horario.horarioFin} h
                           </Text>
                           {pasado ? null : deletingId === horario.id ? (
-                            <ActivityIndicator color={colors.violet} />
+                            <ActivityIndicator color={colors.fuchsia} />
                           ) : (
                             <Pressable
                               onPress={() => confirmDelete(horario)}
@@ -342,9 +349,25 @@ export default function MisHorarios() {
           <Text style={styles.hint}>Los días sin horario son tus días libres: nadie puede reservarte.</Text>
 
           <Section title="Días">
-            <View style={styles.wrap}>
-              {DIAS.map(({ day, label }) => (
-                <Chip key={day} label={label} selected={dias.includes(day)} onPress={() => toggleDia(day)} />
+            {/* Una fila finita por día con su interruptor (pedido de Andrea) */}
+            <View style={styles.dayList}>
+              {DIAS.map(({ day, label }, index) => (
+                <Pressable
+                  key={day}
+                  onPress={() => toggleDia(day)}
+                  style={[styles.daySwitch, index > 0 && styles.daySwitchBorder]}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: dias.includes(day) }}
+                  accessibilityLabel={label}
+                >
+                  <Text style={[styles.daySwitchText, dias.includes(day) && styles.daySwitchOn]}>{label}</Text>
+                  <Switch
+                    value={dias.includes(day)}
+                    onValueChange={() => toggleDia(day)}
+                    trackColor={{ false: colors.border, true: colors.fuchsia }}
+                    thumbColor={colors.white}
+                  />
+                </Pressable>
               ))}
             </View>
           </Section>
@@ -388,7 +411,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   arrow: {
     padding: spacing.sm,
@@ -427,7 +450,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   today: {
-    color: colors.violet,
+    color: colors.fuchsiaText,
   },
   ranges: {
     flex: 1,
@@ -453,7 +476,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,
@@ -474,10 +497,31 @@ const styles = StyleSheet.create({
     color: colors.grey,
     lineHeight: 20,
   },
-  wrap: {
+  dayList: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.sm + 4,
+  },
+  daySwitch: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  daySwitchBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  daySwitchText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
+  daySwitchOn: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.black,
   },
   steppers: {
     flexDirection: 'row',
@@ -518,7 +562,7 @@ const styles = StyleSheet.create({
   summary: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
-    color: colors.violet,
+    color: colors.fuchsiaText,
     lineHeight: 20,
   },
   loading: {

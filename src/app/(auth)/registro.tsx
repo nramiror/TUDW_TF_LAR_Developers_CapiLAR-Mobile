@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
+import { AlergiasField } from '@/components/alergiasField/alergiasField';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -61,6 +63,8 @@ export default function Registro() {
   const { register } = useAuth();
 
   const [values, setValues] = useState<FormValues>(initialValues);
+  // Las de la lista del salón; values.alergia es la "Otra"
+  const [alergiaIds, setAlergiaIds] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -81,15 +85,24 @@ export default function Registro() {
     }
 
     setIsLoading(true);
+    const email = values.email.trim().toLowerCase();
     try {
       await register({
         nombre: values.nombre.trim(),
         apellido: values.apellido.trim(),
-        email: values.email.trim().toLowerCase(),
+        email,
         telefono: values.telefono,
         contrasena: values.contrasena,
+        alergiaIds: alergiaIds.length > 0 ? alergiaIds : undefined,
         alergia: values.alergia.trim() || undefined,
       });
+      // Encuesta del TP4: varias personas no se enteraron de que tenían que verificar el email hasta querer reservar.
+      // El aviso es nativo, así que sigue a la vista mientras el layout la lleva a Reservar
+      showAlert(
+        '¡Cuenta creada! Verificá tu email',
+        `Te mandamos un enlace a ${email}. Abrilo para poder reservar turnos (revisá también la carpeta de spam). Si no te llega, lo podés reenviar desde Reservar o Mi perfil.`,
+        [{ text: 'Entendido' }],
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
     } finally {
@@ -122,12 +135,11 @@ export default function Registro() {
         hint="Solo números, con código de área y sin 0 ni 15"
         {...bind('telefono')}
       />
-      <TextField
-        label="Alergias o sensibilidades (opcional)"
-        placeholder="ej. amoníaco"
-        hint="Le sirve a tu estilista para elegir los productos"
-        maxLength={255}
-        {...bind('alergia')}
+      <AlergiasField
+        selected={alergiaIds}
+        onChangeSelected={setAlergiaIds}
+        otra={values.alergia}
+        onChangeOtra={(text) => setValues((prev) => ({ ...prev, alergia: text }))}
       />
       <TextField
         label="Contraseña"

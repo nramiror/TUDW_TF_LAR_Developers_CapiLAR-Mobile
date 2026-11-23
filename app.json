@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.lardevelopers.capilar",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -32,7 +33,31 @@
         "expo-image-picker",
         {
           "photosPermission": "CapiLAR usa tus fotos para que elijas tu foto de perfil.",
-          "cameraPermission": "CapiLAR usa la cámara para que saques tu foto de perfil."
+          "cameraPermission": "CapiLAR usa la cámara para que saques tu foto de perfil.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CapiLAR usa la cámara para leer el código QR de los productos del salón.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": false,
+          "savePhotosPermission": "CapiLAR guarda en tu galería la foto de Probá un color.",
+          "granularPermissions": ["photo"]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#A35FDA"
         }
       ],
       [
@@ -47,6 +72,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dc167a9b-2e44-47ce-b8d2-1052ac1cff56"
+      }
+    },
+    "owner": "lar-developers"
   }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1049315256091",
+    "project_id": "capilar-96597",
+    "storage_bucket": "capilar-96597.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049315256091:android:e86c72010f58875f8e15be",
+        "android_client_info": {
+          "package_name": "com.lardevelopers.capilar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNa4CXIun7pwgSyilq_dFXdYXCC4Gv968"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

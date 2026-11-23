@@ -1,18 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
+import { formatAlergias } from '@/api/alergias';
 import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
-import { Button } from '@/components/button/button';
+import { showAlert } from '@/components/appAlert/appAlert';
+import { ActionGrid } from '@/components/actionTile/actionTile';
+import type { TileAction } from '@/components/actionTile/actionTile';
 import { EmailVerification } from '@/components/emailVerification/emailVerification';
 import { ProfilePhoto } from '@/components/profilePhoto/profilePhoto';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 import { isoToFecha } from '@/utils/validation';
 
 const ROL_LABEL: Record<Usuario['rol'], string> = {
@@ -23,29 +26,35 @@ const ROL_LABEL: Record<Usuario['rol'], string> = {
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => (
-  <View style={styles.row}>
-    <Ionicons name={icon} size={20} color={colors.violet} />
-    <View style={styles.rowText}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+const DataRow = ({ icon, label, value }: { icon: IconName; label: string; value: string }) => {
+  const { accent } = useAccent();
+  return (
+    <View style={styles.row}>
+      <Ionicons name={icon} size={20} color={accent} />
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue}>{value}</Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 interface ProfileViewProps {
+  // Accesos propios del rol, después de "Editar mis datos" y "Cambiar contraseña"
+  actions?: TileAction[];
   // Secciones propias del rol, entre los datos y cerrar sesión (ej. "Mis servicios" del profesional)
   children?: ReactNode;
 }
 
 // Perfil del usuario logueado (cliente o profesional): foto, datos, editar, cerrar sesión y darse de baja
-export const ProfileView = ({ children }: ProfileViewProps) => {
+export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
   const { user, token, logout } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const accent = useAccent();
   if (!user) return null;
 
   const confirmLogout = () =>
-    Alert.alert('Cerrar sesión', '¿Querés cerrar sesión en este celular?', [
+    showAlert('Cerrar sesión', '¿Querés cerrar sesión en este celular?', [
       { text: 'Cancelar', style: 'cancel' },
       // Al borrar la sesión, el layout del rol redirige solo a la bienvenida
       { text: 'Cerrar sesión', style: 'destructive', onPress: () => logout() },
@@ -60,19 +69,19 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
       await logout();
     } catch (err) {
       setIsDeleting(false);
-      Alert.alert('No se pudo dar de baja', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+      showAlert('No se pudo dar de baja', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
     }
   };
 
   // Doble confirmación: es una acción que el usuario no puede deshacer desde la app
   const confirmDelete = () =>
-    Alert.alert('Darme de baja', 'Tu cuenta se va a desactivar y no vas a poder volver a entrar con ella.', [
+    showAlert('Darme de baja', 'Tu cuenta se va a desactivar y no vas a poder volver a entrar con ella.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Continuar',
         style: 'destructive',
         onPress: () =>
-          Alert.alert('¿Estás seguro?', 'Para volver a usar CapiLAR vas a tener que comunicarte con el salón.', [
+          showAlert('¿Estás seguro?', 'Para volver a usar CapiLAR vas a tener que comunicarte con el salón.', [
             { text: 'No, volver', style: 'cancel' },
             { text: 'Sí, darme de baja', style: 'destructive', onPress: deleteAccount },
           ]),
@@ -88,35 +97,39 @@ export const ProfileView = ({ children }: ProfileViewProps) => {
         <Text style={styles.name}>
           {user.nombre} {user.apellido}
         </Text>
-        <Text style={styles.role}>{ROL_LABEL[user.rol]}</Text>
+        <Text style={[styles.role, { color: accent.text }]}>{ROL_LABEL[user.rol]}</Text>
       </View>
 
       <EmailVerification />
 
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: accent.surface }]}>
         <DataRow icon="mail-outline" label="Correo" value={user.email} />
         <DataRow icon="call-outline" label="Teléfono" value={user.telefono || '—'} />
         {user.fechaNacimiento && <DataRow icon="gift-outline" label="Fecha de nacimiento" value={isoToFecha(user.fechaNacimiento)} />}
         {user.rol === 'CLIENTE' && (
-          <DataRow icon="medkit-outline" label="Alergias o sensibilidades" value={user.cliente?.alergia || 'Ninguna cargada'} />
+          <DataRow icon="medkit-outline" label="Alergias o sensibilidades" value={formatAlergias(user.cliente) || 'Ninguna cargada'} />
         )}
         {user.rol === 'PROFESIONAL' && user.profesional && (
           <DataRow icon="id-card-outline" label="Legajo" value={String(user.profesional.legajo)} />
         )}
       </View>
 
-      <Button variant="secundario" onPress={() => router.push('/editar-perfil')}>
-        Editar mis datos
-      </Button>
-      <Button variant="secundario" onPress={() => router.push('/cambiar-contrasena')}>
-        Cambiar contraseña
-      </Button>
+      {/* Grilla de 2 columnas en vez de botones a todo el ancho (pedido de Andrea tras la demo del 75%) */}
+      <ActionGrid
+        actions={[
+          { label: 'Editar mis datos', icon: 'create-outline', onPress: () => router.push('/editar-perfil') },
+          { label: 'Cambiar contraseña', icon: 'key-outline', onPress: () => router.push('/cambiar-contrasena') },
+          ...actions,
+        ]}
+      />
 
       {children}
 
-      <Button variant="grey" onPress={confirmLogout} disabled={isDeleting}>
-        Cerrar sesión
-      </Button>
+      {/* Link con ícono en vez de botón: al lado de la grilla, un botón suelto se veía raro */}
+      <Pressable onPress={confirmLogout} disabled={isDeleting} hitSlop={8} accessibilityRole="button" style={styles.logout}>
+        <Ionicons name="log-out-outline" size={20} color={colors.grey} />
+        <Text style={styles.logoutText}>Cerrar sesión</Text>
+      </Pressable>
 
       <Pressable onPress={confirmDelete} disabled={isDeleting} hitSlop={8} accessibilityRole="button" style={styles.delete}>
         <Text style={styles.deleteText}>{isDeleting ? 'Dando de baja…' : 'Darme de baja'}</Text>
@@ -143,10 +156,8 @@ const styles = StyleSheet.create({
   role: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
-    color: colors.violet,
   },
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
     gap: spacing.md,
@@ -169,9 +180,22 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.md,
     color: colors.black,
   },
+  logout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  logoutText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSizes.sm,
+    color: colors.grey,
+  },
   delete: {
     alignSelf: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     marginBottom: spacing.md,
   },
   deleteText: {

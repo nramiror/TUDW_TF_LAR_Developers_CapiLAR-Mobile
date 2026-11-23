@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 
 interface ChipProps {
   label: string;
@@ -12,23 +12,34 @@ interface ChipProps {
   style?: StyleProp<ViewStyle>;
 }
 
-// Opción seleccionable en forma de pastilla (profesional, día, horario) o botón chico. Elegida: fondo violeta
-export const Chip = ({ label, selected = false, onPress, disabled = false, accessibilityLabel, style }: ChipProps) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={({ pressed }) => [styles.chip, selected && styles.selected, pressed && !selected && styles.pressed, disabled && styles.disabled, style]}
-    accessibilityRole="button"
-    accessibilityState={{ selected, disabled }}
-    accessibilityLabel={accessibilityLabel ?? label}
-  >
-    <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
-  </Pressable>
-);
+// Opción seleccionable en forma de pastilla (profesional, día, horario, intensidad) o botón chico. Siempre pastilla.
+// Elegida: fondo clarito con borde y texto violeta (pedido de Andrea: el violeta lleno se veía muy fuerte)
+// Los colores de lo elegido y lo presionado son los del rol (violeta la clienta, fucsia la profesional)
+export const Chip = ({ label, selected = false, onPress, disabled = false, accessibilityLabel, style }: ChipProps) => {
+  const accent = useAccent();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.chip,
+        selected && { backgroundColor: accent.surface, borderColor: accent.accent },
+        pressed && !selected && { backgroundColor: accent.surface },
+        disabled && styles.disabled,
+        style,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
+      accessibilityLabel={accessibilityLabel ?? label}
+    >
+      <Text style={[styles.label, selected && [styles.selectedLabel, { color: accent.text }]]}>{label}</Text>
+    </Pressable>
+  );
+};
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 40,
+    minHeight: 38,
     paddingHorizontal: spacing.md,
     borderRadius: radius.full,
     borderWidth: 1.5,
@@ -36,13 +47,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  selected: {
-    backgroundColor: colors.violet,
-    borderColor: colors.violet,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
   },
   disabled: {
     opacity: 0.5,
@@ -54,6 +58,6 @@ const styles = StyleSheet.create({
     color: colors.black,
   },
   selectedLabel: {
-    color: colors.white,
+    fontFamily: fonts.bodySemiBold,
   },
 });

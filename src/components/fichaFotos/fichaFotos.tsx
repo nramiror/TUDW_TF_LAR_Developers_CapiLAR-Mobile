@@ -5,10 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MAX_FOTOS_POR_MOMENTO, fichaPhotoPath } from '@/api/fichas';
 import type { FotoFicha, MomentoFoto } from '@/api/fichas';
+import { formatFechaNumerica } from '@/api/turnos';
 import { AuthImage } from '@/components/authImage/authImage';
 import { Button } from '@/components/button/button';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { colors, fonts, fontSizes, radius, spacing, useAccent } from '@/theme';
 import type { ImageSource } from '@/utils/pickImage';
 
 const THUMB = 88;
@@ -27,14 +28,22 @@ interface FichaFotosProps {
   onRemove?: (foto: FotoFicha) => void;
   // Momento con una foto subiendo: su botón de agregar espera
   busyTipo?: MomentoFoto | null;
+  // Servicio y fecha del turno ("YYYY-MM-DD"), para describir cada foto en TalkBack
+  servicio: string;
+  fecha: string;
 }
 
 // F08: fotos de antes y después de una ficha (hasta 5 de cada una). Al tocar una se ve en grande
-export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null }: FichaFotosProps) => {
+export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null, servicio, fecha }: FichaFotosProps) => {
   const insets = useSafeAreaInsets();
   const [addingTipo, setAddingTipo] = useState<MomentoFoto | null>(null);
   const [viewing, setViewing] = useState<FotoFicha | null>(null);
+  // El recuadro de "Agregar" en el color del rol (en la clienta solo se ven las fotos)
+  const accent = useAccent();
   const editable = onAdd !== undefined;
+  // Encuesta del TP4 (accesibilidad): "Foto de antes – Coloración, 12/10/2026"
+  const describe = (tipo: MomentoFoto) =>
+    `Foto de ${tipo === 'ANTES' ? 'antes' : 'después'} – ${servicio}, ${formatFechaNumerica(fecha)}`;
 
   const grupos = MOMENTOS.map((momento) => ({ ...momento, fotos: fotos.filter((foto) => foto.tipo === momento.tipo) })).filter(
     (grupo) => editable || grupo.fotos.length > 0,
@@ -53,7 +62,13 @@ export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null }:
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {fichaId !== null &&
               grupo.fotos.map((foto) => (
-                <Pressable key={foto.id} onPress={() => setViewing(foto)} accessibilityRole="imagebutton" accessibilityLabel={`Ver foto de ${grupo.label.toLowerCase()}`}>
+                <Pressable
+                  key={foto.id}
+                  onPress={() => setViewing(foto)}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={describe(foto.tipo)}
+                  accessibilityHint="Abre la foto en grande"
+                >
                   <AuthImage path={fichaPhotoPath(fichaId, foto.id)} style={styles.thumb} />
                 </Pressable>
               ))}
@@ -61,16 +76,16 @@ export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null }:
               <Pressable
                 onPress={() => setAddingTipo(grupo.tipo)}
                 disabled={busyTipo !== null}
-                style={({ pressed }) => [styles.thumb, styles.add, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.thumb, styles.add, { borderColor: accent.accent }, pressed && { backgroundColor: accent.surface }]}
                 accessibilityRole="button"
                 accessibilityLabel={`Agregar foto de ${grupo.label.toLowerCase()}`}
               >
                 {busyTipo === grupo.tipo ? (
-                  <ActivityIndicator color={colors.violet} />
+                  <ActivityIndicator color={accent.accent} />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={26} color={colors.violet} />
-                    <Text style={styles.addText}>Agregar</Text>
+                    <Ionicons name="camera-outline" size={26} color={accent.accent} />
+                    <Text style={[styles.addText, { color: accent.text }]}>Agregar</Text>
                   </>
                 )}
               </Pressable>
@@ -95,7 +110,14 @@ export const FichaFotos = ({ fichaId, fotos, onAdd, onRemove, busyTipo = null }:
             <Ionicons name="close" size={30} color={colors.white} />
           </Pressable>
           {viewing && fichaId !== null && (
-            <AuthImage path={fichaPhotoPath(fichaId, viewing.id)} style={styles.full} contentFit="contain" />
+            <AuthImage
+              path={fichaPhotoPath(fichaId, viewing.id)}
+              style={styles.full}
+              contentFit="contain"
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={describe(viewing.tipo)}
+            />
           )}
           {viewing && onRemove && (
             <Button
@@ -140,16 +162,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.violet,
     backgroundColor: colors.white,
-  },
-  pressed: {
-    backgroundColor: colors.surface,
   },
   addText: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.xs,
-    color: colors.violet,
   },
   empty: {
     fontFamily: fonts.body,

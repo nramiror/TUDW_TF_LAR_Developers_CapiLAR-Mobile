@@ -2,12 +2,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { FRECUENCIAS, FRECUENCIA_LABEL, createSerieRequest, fechasFinPosibles, previewSerieRequest } from '@/api/series';
 import type { FechaPlanificada, FrecuenciaSerie, VistaPreviaSerie } from '@/api/series';
 import { formatFechaCorta, formatFechaLarga } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -56,7 +57,7 @@ type Params = {
   horaInicio: string;
 };
 
-// F05: el profesional repite el servicio de un turno CONFIRMADO suyo, a la misma hora, cada tantos días y hasta
+// F05: el profesional repite el servicio de un turno suyo CONFIRMADO o COMPLETADO, a la misma hora, cada tantos días y hasta
 // 60 días desde hoy. Antes de crearla ve qué pasa en cada fecha (vista previa del back)
 export default function SerieNueva() {
   const params = useLocalSearchParams<Params>();
@@ -117,7 +118,7 @@ export default function SerieNueva() {
     try {
       const serie = await createSerieRequest(token, { turnoId, turnoDetalleId, frecuencia, fechaFin });
       const reservados = serie.fechas.filter((item) => item.turnoId !== null).length;
-      Alert.alert(
+      showAlert(
         'Serie creada',
         `Se reservaron ${reservados} ${reservados === 1 ? 'turno' : 'turnos'}. A ${params.cliente} le llega un mail con todas las fechas.` +
           (sinHorario ? ' Acordate de cargar tu horario en los días que te faltan.' : ''),
@@ -166,7 +167,7 @@ export default function SerieNueva() {
       {(isLoadingVista || vista) && (
         <Section title="Fechas">
           {isLoadingVista || !vista ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Calculando fechas" />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Calculando fechas" />
           ) : (
             <View style={styles.fechas}>
               {vista.fechas.map((item) => {
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   },
   fechas: {
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
     paddingHorizontal: spacing.md,
   },
   fecha: {

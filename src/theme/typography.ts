@@ -2,6 +2,7 @@ import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
+  Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import {
   Montserrat_400Regular,
@@ -18,6 +19,7 @@ export const fontAssets = {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
+  Inter_700Bold,
 };
 
 export const fonts = {
@@ -27,9 +29,11 @@ export const fonts = {
   body: 'Inter_400Regular',
   bodyMedium: 'Inter_500Medium',
   bodySemiBold: 'Inter_600SemiBold',
+  bodyBold: 'Inter_700Bold',
 } as const;
 
 export const fontSizes = {
+  // El más chico: nada por debajo de 12 px (accesibilidad, encuesta del TP4)
   xs: 12,
   sm: 14,
   md: 16,

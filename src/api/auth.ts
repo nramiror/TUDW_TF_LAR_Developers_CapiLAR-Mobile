@@ -1,3 +1,4 @@
+import type { AlergiaCliente } from './alergias';
 import { apiFetch } from './client';
 
 // Tipos y endpoints de autenticación, los mismos que usa el front (src/api/auth.ts)
@@ -17,9 +18,9 @@ export interface Usuario {
   fechaBaja: string | null;
   // null: no verificó su email (un cliente sin verificar no puede reservar). Se vuelve null si cambia el email
   emailVerificadoEn?: string | null;
-  // Subtipo según el rol: alergia del cliente, legajo del profesional (null si no lo tiene).
+  // Subtipo según el rol: alergias del cliente (las de la lista y "Otra" en texto libre), legajo del profesional (null si no lo tiene).
   // foto: nombre del archivo de la foto de perfil (null si no tiene); la imagen se pide a GET /users/:id/foto
-  cliente?: { alergia: string | null; foto?: string | null } | null;
+  cliente?: { alergias?: AlergiaCliente[]; alergia: string | null; foto?: string | null } | null;
   profesional?: { legajo: number; foto?: string | null } | null;
 }
 
@@ -37,6 +38,9 @@ export interface RegisterData {
   email: string;
   telefono: string;
   contrasena: string;
+  // id de GET /alergias
+  alergiaIds?: number[];
+  // "Otra": lo que no está en la lista
   alergia?: string;
   // "YYYY-MM-DD"
   fechaNacimiento?: string;

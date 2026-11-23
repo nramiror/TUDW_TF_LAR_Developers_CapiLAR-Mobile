@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 
+import type { AlergiaCliente } from './alergias';
 import type { Usuario } from './auth';
 import { apiFetch } from './client';
 
@@ -11,7 +12,9 @@ export interface UpdateProfileData {
   nombre?: string;
   apellido?: string;
   telefono?: string;
-  // Solo CLIENTE; null la borra
+  // Solo CLIENTE: id de GET /alergias; reemplaza la lista entera ([] las quita)
+  alergiaIds?: number[];
+  // Solo CLIENTE: "Otra", lo que no está en la lista; null la borra
   alergia?: string | null;
   // "YYYY-MM-DD"; null la borra
   fechaNacimiento?: string | null;
@@ -41,6 +44,19 @@ export const deletePhotoRequest = (token: string) => apiFetch<Usuario>('/users/m
 export const resendVerificationRequest = (token: string) =>
   apiFetch<{ message: string }>('/users/me/verificar-email', { method: 'POST', token });
 
+// F06/F07 push: el token de Expo queda en la sesión de este celular (cerrar sesión lo borra en el back).
+// 400 si no es un token de Expo
+export const registerPushTokenRequest = (token: string, pushToken: string) =>
+  apiFetch<{ message: string }>('/users/me/push-token', { method: 'PATCH', body: { token: pushToken }, token });
+
+// Tipos de aviso que manda el back, con el turno en `data`
+export type TipoPush = 'TURNO_NUEVO' | 'TURNO_CANCELADO' | 'TURNO_CONFIRMADO' | 'TURNO_RECHAZADO' | 'TURNO_REPROGRAMADO' | 'RECORDATORIO';
+
+export interface PushData {
+  tipo: TipoPush;
+  turnoId: number;
+}
+
 // Borrado lógico: la cuenta no puede volver a entrar y el token deja de servir
 export const deleteAccountRequest = (token: string) => apiFetch<{ message: string }>('/users/me', { method: 'DELETE', token });
 
@@ -57,7 +73,7 @@ export interface ClienteResumen {
   apellido: string;
   email: string;
   telefono: string | null;
-  cliente: { alergia: string | null } | null;
+  cliente: { alergias?: AlergiaCliente[]; alergia: string | null } | null;
 }
 
 // Solo PROFESIONAL: clientes activos por nombre, apellido o email, ordenados por apellido

@@ -1,13 +1,16 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { colors } from '@/theme';
+import { colors, useAccent } from '@/theme';
 
 // Pantalla de carga a pantalla completa (por ejemplo, mientras se recupera la sesión)
-export const Loader = () => (
-  <View style={styles.container} accessibilityLabel="Cargando">
-    <ActivityIndicator size="large" color={colors.violet} />
-  </View>
-);
+export const Loader = () => {
+  const { accent } = useAccent();
+  return (
+    <View style={styles.container} accessibilityLabel="Cargando">
+      <ActivityIndicator size="large" color={accent} />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

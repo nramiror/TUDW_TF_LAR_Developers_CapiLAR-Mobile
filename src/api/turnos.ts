@@ -1,4 +1,5 @@
-import { apiFetch } from './client';
+import type { AlergiaCliente } from './alergias';
+import { ApiError, apiFetch } from './client';
 
 // Copiado del front (src/api/turnos.ts): mismos tipos, reglas y endpoints de turnos.
 // Si cambia allá, hay que actualizarlo acá también.
@@ -9,6 +10,13 @@ import { apiFetch } from './client';
 export type EstadoTurno = 'PENDIENTE' | 'CONFIRMADO' | 'REPROGRAMADO' | 'COMPLETADO' | 'RECHAZADO' | 'CANCELADO' | 'AUSENTE';
 
 export type MetodoPago = 'EFECTIVO' | 'DEBITO' | 'CREDITO' | 'TRANSFERENCIA';
+
+export const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  DEBITO: 'Débito',
+  CREDITO: 'Crédito',
+  TRANSFERENCIA: 'Transferencia',
+};
 
 // Un servicio del turno, con su profesional y su propio horario (se hacen uno después del otro)
 export interface TurnoDetalle {
@@ -21,6 +29,8 @@ export interface TurnoDetalle {
   horaFin: string;
   // Precio al reservar, como texto ("15000.00")
   precioBase: string;
+  // F12: lo que se cobró, como texto ("18000"). null hasta que se completa el turno
+  precioFinal?: string | null;
   // F08: ficha técnica de este servicio (null si no tiene). Solo en los turnos del salón, no en /turnos/mios
   fichaId?: number | null;
 }
@@ -32,6 +42,9 @@ export interface Turno {
   horaInicio: string;
   horaFin: string;
   estado: EstadoTurno;
+  // F05: la serie a la que pertenece y la serie que empezó (null si no). Con alguno de los dos no se crea otra serie
+  serieId?: number | null;
+  serieOrigenId?: number | null;
   // Cuándo el cliente confirmó que viene (desde la app o el recordatorio); null si no confirmó. Se borra al reprogramar
   asistenciaConfirmadaEn: string | null;
   metodoPago: MetodoPago | null;
@@ -42,6 +55,8 @@ export interface Turno {
     nombre: string;
     apellido: string;
     telefono: string;
+    // Las de la lista del salón y "Otra" en texto libre (mostrarlas juntas con formatAlergias)
+    alergias?: AlergiaCliente[];
     alergia: string | null;
     // null: todavía no verificó su email (no puede reservar sola)
     emailVerificadoEn?: string | null;
@@ -91,6 +106,40 @@ export interface HorariosLibresOptions {
 export const getHorariosLibresRequest = (token: string, fecha: string, items: TurnoItem[], options: HorariosLibresOptions = {}) =>
   apiFetch<HorariosLibres>('/turnos/horarios-libres', { method: 'POST', body: { fecha, items, ...options }, token });
 
+// Días (de los que trabaja el profesional) que no se pueden elegir, con el motivo: null si ya no queda ningún horario
+// libre, o el mensaje del 409 si la clienta ya tiene ese servicio ese día (un servicio por día, regla del back).
+// El back no tiene un endpoint por rango, así que se pregunta día por día, de a 4 a la vez. Si un pedido falla por
+// otra cosa, ese día se deja elegible
+export const getDiasSinLugarRequest = async (token: string, fechas: string[], items: TurnoItem[]) => {
+  const sinLugar = new Map<string, string | null>();
+  const pendientes = [...fechas];
+  const worker = async () => {
+    for (let fecha = pendientes.shift(); fecha; fecha = pendientes.shift()) {
+      try {
+        const libres = await getHorariosLibresRequest(token, fecha, items);
+        if (libres.horarios.length === 0) sinLugar.set(fecha, null);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) sinLugar.set(fecha, err.message);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  return sinLugar;
+};
+
+// "Primer turno disponible" (copiado de la web, PWA-295): el primer día de `fechas` (ordenadas) con algún horario libre
+// y su primer horario, o null si no hay. De a 4 días a la vez; un día que falla (ej. 409 porque ya tiene ese servicio)
+// se saltea
+export const buscarPrimerHorarioLibre = async (token: string, fechas: string[], items: TurnoItem[]) => {
+  for (let i = 0; i < fechas.length; i += 4) {
+    const tanda = fechas.slice(i, i + 4);
+    const respuestas = await Promise.all(tanda.map((fecha) => getHorariosLibresRequest(token, fecha, items).catch(() => null)));
+    const conLugar = respuestas.find((r) => r && r.horarios.length > 0);
+    if (conLugar) return { fecha: conLugar.fecha, hora: conLugar.horarios[0] };
+  }
+  return null;
+};
+
 // CLIENTE: nace CONFIRMADO, o PENDIENTE si algún servicio requiere evaluación (403 si no verificó su email).
 // PROFESIONAL / ADMIN con clienteId: queda CONFIRMADO
 export const createTurnoRequest = (token: string, data: CreateTurnoData) =>
@@ -128,8 +177,28 @@ export const acceptRescheduleRequest = (token: string, id: number) =>
 export const cancelTurnoRequest = (token: string, id: number, motivo?: string) =>
   apiFetch<Turno>(`/turnos/${id}/cancelar`, { method: 'PATCH', body: motivo ? { motivo } : {}, token });
 
-export const completeTurnoRequest = (token: string, id: number) =>
-  apiFetch<Turno>(`/turnos/${id}/completar`, { method: 'PATCH', token });
+// F12: lo que se cobró en un turno completado (suma de los precioFinal), o null si no se completó.
+// Los completados antes de F12 también lo tienen: la migración les copió el precio base
+export const totalCobrado = (turno: Turno) =>
+  turno.estado === 'COMPLETADO' && turno.detalles.every((detalle) => detalle.precioFinal != null)
+    ? turno.detalles.reduce((suma, detalle) => suma + Number(detalle.precioFinal), 0)
+    : null;
+
+// F12: lo cobrado por cada servicio (los que no van se cobran a su precioBase) y el método de pago.
+// precioFinal no se puede cambiar después de completar
+export interface CompletarTurnoData {
+  detalles: { turnoDetalleId: number; precioFinal: number }[];
+  metodoPago: MetodoPago;
+}
+
+// Cierra las fichas y descuenta del stock sus insumos con artículo. Sin stock suficiente se descuenta igual:
+// sinStock trae los artículos que quedaron por debajo de 0 (vacío si ninguno)
+export const completeTurnoRequest = (token: string, id: number, data: CompletarTurnoData) =>
+  apiFetch<Turno & { sinStock: { id: number; nombre: string; stock: string }[] }>(`/turnos/${id}/completar`, {
+    method: 'PATCH',
+    body: data,
+    token,
+  });
 
 // PROFESIONAL: el cliente no vino (CONFIRMADO -> AUSENTE), desde la hora de fin del turno
 export const markAbsentRequest = (token: string, id: number) =>
@@ -166,6 +235,9 @@ export const upcomingRanges = () => {
 // "2026-10-07" -> "martes 7 de octubre"
 export const formatFechaLarga = (fecha: string) =>
   fromIsoDate(fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+// "2026-10-07" -> "07/10/2026"
+export const formatFechaNumerica = (fecha: string) => fecha.split('-').reverse().join('/');
 
 // "2026-10-07" -> "mar 7 oct"
 export const formatFechaCorta = (fecha: string) =>
@@ -210,3 +282,36 @@ export const formatWeek = (monday: Date) => {
   return `${start} al ${end}`;
 };
 
+
+// Primer día del mes de `date`
+export const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
+
+export const addMonths = (date: Date, months: number) => new Date(date.getFullYear(), date.getMonth() + months, 1);
+
+// "noviembre de 2026"
+export const formatMonth = (date: Date) => date.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+// Turnos de la agenda entre dos fechas ("YYYY-MM-DD"), de cualquier largo: el back acepta hasta 31 días por consulta,
+// así que se pide por tramos (como getRangeRequest de la agenda web)
+export const getAgendaRangoRequest = async (token: string, legajo: number, desde: string, hasta: string) => {
+  const tramos: [string, string][] = [];
+  for (let inicio = fromIsoDate(desde); toIsoDate(inicio) <= hasta; inicio = addDays(inicio, MAX_DIAS_AGENDA)) {
+    const fin = toIsoDate(addDays(inicio, MAX_DIAS_AGENDA - 1));
+    tramos.push([toIsoDate(inicio), fin < hasta ? fin : hasta]);
+  }
+  const partes = await Promise.all(tramos.map(([d, h]) => getAgendaRequest(token, legajo, d, h)));
+  return partes.flat();
+};
+
+// Filtro por estado de la agenda, mismos grupos que la web
+export type FiltroEstado = 'todos' | 'confirmados' | 'porConfirmar' | 'cancelados' | 'completados' | 'ausentes';
+
+export const FILTROS_ESTADO: { value: FiltroEstado; label: string; estados?: EstadoTurno[] }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'confirmados', label: 'Confirmados', estados: ['CONFIRMADO'] },
+  // Pendientes de aprobar y reprogramados que el cliente todavía no aceptó
+  { value: 'porConfirmar', label: 'Por confirmar', estados: ['PENDIENTE', 'REPROGRAMADO'] },
+  { value: 'cancelados', label: 'Cancelados', estados: ['CANCELADO', 'RECHAZADO'] },
+  { value: 'completados', label: 'Completados', estados: ['COMPLETADO'] },
+  { value: 'ausentes', label: 'Ausentes', estados: ['AUSENTE'] },
+];

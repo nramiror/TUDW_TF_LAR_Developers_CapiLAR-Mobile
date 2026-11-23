@@ -2,15 +2,18 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { formatFechaLarga } from '@/api/turnos';
+import { formatAlergias } from '@/api/alergias';
+import { formatPrice } from '@/api/services';
+import { METODO_PAGO_LABEL, formatFechaLarga, totalCobrado } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { GradientCard } from '@/components/gradientCard/gradientCard';
+import { colors, fonts, fontSizes, spacing } from '@/theme';
 
 // Cómo ve el profesional cada estado (el cliente los ve con otros textos en TurnoCard)
 const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   PENDIENTE: { label: 'Solicitud pendiente', color: colors.warning },
   CONFIRMADO: { label: 'Confirmado', color: colors.success },
-  REPROGRAMADO: { label: 'Esperando respuesta del cliente', color: colors.violet },
+  REPROGRAMADO: { label: 'Esperando respuesta del cliente', color: colors.fuchsiaText },
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'Rechazado', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
@@ -23,30 +26,36 @@ interface AgendaTurnoCardProps {
   turno: Turno;
   // En las solicitudes pendientes se muestra la fecha; en la agenda del día ya se sabe
   showFecha?: boolean;
-  // Botones según el estado (los arma la pantalla)
+  // Las solicitudes pendientes ya están bajo ese título: no repiten el estado
+  hideEstado?: boolean;
+  // Botones chicos según el estado (los arma la pantalla); van abajo a la derecha, junto al estado
   children?: ReactNode;
 }
 
 // Turno en la agenda del profesional: horario, cliente (con su alergia, importante para los químicos) y servicios
-export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTurnoCardProps) => {
+export const AgendaTurnoCard = ({ turno, showFecha = false, hideEstado = false, children }: AgendaTurnoCardProps) => {
   const estado = ESTADO[turno.estado];
   const inactivo = turno.estado === 'CANCELADO' || turno.estado === 'RECHAZADO';
+  const alergias = formatAlergias(turno.cliente);
 
   return (
-    <View style={[styles.card, inactivo && styles.inactive]}>
-      <View style={styles.header}>
-        <Text style={styles.time}>
-          {turno.horaInicio} a {turno.horaFin} h
-        </Text>
-        <View style={[styles.badge, { borderColor: estado.color }]}>
-          <Text style={[styles.badgeText, { color: estado.color }]}>{estado.label}</Text>
-        </View>
-      </View>
+    // Mismo estilo que Mis turnos: borde degradado y el estado como texto abajo, sin pastilla (pedido de Linda y Andrea).
+    // Cancelados y rechazados: gris tipo deshabilitado, sin degradado
+    <GradientCard muted={inactivo} dimmed={inactivo}>
+      <Text style={styles.time}>
+        {turno.horaInicio} a {turno.horaFin} h
+      </Text>
       {showFecha && <Text style={styles.date}>{capitalize(formatFechaLarga(turno.fecha))}</Text>}
 
       <Text style={styles.client}>
         {turno.cliente.nombre} {turno.cliente.apellido}
       </Text>
+      {turno.serieId || turno.serieOrigenId ? (
+        <View style={styles.row}>
+          <Ionicons name="repeat-outline" size={16} color={colors.fuchsia} />
+          <Text style={[styles.detail, styles.serie]}>{turno.serieId ? 'Turno de una serie' : 'Empezó una serie'}</Text>
+        </View>
+      ) : null}
       {turno.estado === 'CONFIRMADO' && turno.asistenciaConfirmadaEn ? (
         <View style={styles.row}>
           <Ionicons name="checkmark-circle" size={16} color={colors.success} />
@@ -64,10 +73,10 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
         <Ionicons name="call-outline" size={16} color={colors.grey} />
         <Text style={styles.detail}>{turno.cliente.telefono}</Text>
       </View>
-      {turno.cliente.alergia ? (
+      {alergias ? (
         <View style={styles.row}>
           <Ionicons name="warning-outline" size={16} color={colors.error} />
-          <Text style={[styles.detail, styles.alergia]}>Alergia: {turno.cliente.alergia}</Text>
+          <Text style={[styles.detail, styles.alergia]}>Alergia: {alergias}</Text>
         </View>
       ) : null}
       {turno.detalles.map((detalle) => (
@@ -77,47 +86,32 @@ export const AgendaTurnoCard = ({ turno, showFecha = false, children }: AgendaTu
         </View>
       ))}
 
+      {totalCobrado(turno) !== null && (
+        <Text style={styles.cobrado}>
+          Cobrado {formatPrice(totalCobrado(turno) ?? 0)}
+          {turno.metodoPago ? ` · ${METODO_PAGO_LABEL[turno.metodoPago]}` : ''}
+        </Text>
+      )}
+
       {turno.estado === 'CANCELADO' && turno.motivo ? <Text style={styles.note}>Motivo: {turno.motivo}</Text> : null}
       {turno.estado === 'RECHAZADO' && turno.motivo ? <Text style={styles.note}>Motivo (interno): {turno.motivo}</Text> : null}
       {turno.estado === 'REPROGRAMADO' && <Text style={styles.note}>Le propusiste este horario: se confirma cuando lo acepte.</Text>}
 
-      {children ? <View style={styles.actions}>{children}</View> : null}
-    </View>
+      {(!hideEstado || children) && (
+        <View style={styles.footer}>
+          {hideEstado ? <View /> : <Text style={[styles.estado, { color: estado.color }]}>{estado.label}</Text>}
+          {children ? <View style={styles.actions}>{children}</View> : null}
+        </View>
+      )}
+    </GradientCard>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    gap: spacing.xs,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
-  inactive: {
-    opacity: 0.6,
-  },
-  header: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
   time: {
     fontFamily: fonts.subtitle,
     fontSize: fontSizes.md,
-    color: colors.violet,
-  },
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    backgroundColor: colors.white,
-  },
-  badgeText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.xs,
+    color: colors.fuchsiaText,
   },
   date: {
     fontFamily: fonts.bodyMedium,
@@ -125,7 +119,6 @@ const styles = StyleSheet.create({
     color: colors.black,
   },
   client: {
-    marginTop: spacing.xs,
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.md,
     color: colors.black,
@@ -149,6 +142,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     color: colors.success,
   },
+  cobrado: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
+  serie: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.fuchsiaText,
+  },
   unverified: {
     color: colors.warning,
   },
@@ -159,8 +161,25 @@ const styles = StyleSheet.create({
     color: colors.grey,
     lineHeight: 20,
   },
-  actions: {
+  footer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  estado: {
+    flexShrink: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: fontSizes.sm,
+  },
+  // Si no entran en una fila, bajan y quedan a la derecha
+  actions: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
     gap: spacing.sm,
   },
 });

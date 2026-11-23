@@ -8,6 +8,8 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   // Al abrir la app, mientras se valida el token guardado con GET /auth/me
   isCheckingSession: boolean;
+  // Cambia con cada sesión nueva de este celular (no con los refresh): para registrar el token de push
+  sessionId: number;
   hasRole: (...roles: Rol[]) => boolean;
   login: (email: string, contrasena: string) => Promise<Usuario>;
   register: (data: RegisterData) => Promise<Usuario>;

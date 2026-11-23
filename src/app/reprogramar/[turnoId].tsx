@@ -1,12 +1,13 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { getUpcomingWorkDatesRequest } from '@/api/professionals';
 import { formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, rescheduleTurnoRequest, toIsoDate } from '@/api/turnos';
 import type { TurnoItem } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
@@ -117,7 +118,7 @@ export default function Reprogramar() {
     setIsSaving(true);
     try {
       await rescheduleTurnoRequest(token, turnoId, fecha, hora);
-      Alert.alert('Nuevo horario propuesto', `Le avisamos a ${params.cliente} por mail. El turno se confirma cuando lo acepte.`, [
+      showAlert('Nuevo horario propuesto', `Le avisamos a ${params.cliente} por mail. El turno se confirma cuando lo acepte.`, [
         { text: 'Volver a la agenda', onPress: () => router.back() },
       ]);
     } catch (err) {
@@ -141,7 +142,7 @@ export default function Reprogramar() {
 
       <Section title="¿Qué día?">
         {isLoadingFechas ? (
-          <ActivityIndicator color={colors.violet} style={styles.loading} />
+          <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
         ) : fechas.length === 0 ? (
           <Text style={styles.hint}>No tenés días cargados en los próximos 60 días. Cargalos en "Mis horarios".</Text>
         ) : (
@@ -156,7 +157,7 @@ export default function Reprogramar() {
       {fecha && (
         <Section title="¿A qué hora?">
           {isLoadingHorarios ? (
-            <ActivityIndicator color={colors.violet} style={styles.loading} />
+            <ActivityIndicator color={colors.fuchsia} style={styles.loading} />
           ) : horarios.length === 0 ? (
             <Text style={styles.hint}>No quedan horarios libres ese día. Probá con otro.</Text>
           ) : (
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   cardTitle: {
     fontFamily: fonts.subtitle,

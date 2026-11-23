@@ -4,12 +4,14 @@ import { CameraType } from 'expo-image-picker';
 import { Redirect, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { CARTA_DE_COLORES, esColoracion, INTENSIDAD_POR_DEFECTO, previewHairColorRequest, SELFIE_LIMITS } from '@/api/hairColor';
 import type { ColorCarta, VistaPreviaColor } from '@/api/hairColor';
 import { getServicesRequest } from '@/api/services';
+import { showAlert } from '@/components/appAlert/appAlert';
+import { BeforeAfter } from '@/components/beforeAfter/beforeAfter';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -19,6 +21,7 @@ import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
 import { pickImage } from '@/utils/pickImage';
 import type { ImageSource } from '@/utils/pickImage';
+import { saveImageToGallery } from '@/utils/saveImage';
 
 const errorMessage = (err: unknown) => (err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
@@ -50,7 +53,17 @@ const Step = ({ number, title, children }: { number: number; title: string; chil
 
 interface Resultado extends VistaPreviaColor {
   color: ColorCarta;
+  // Con qué intensidad se pidió: si se cambia, vuelve el botón para pedir otra
+  intensidad: number;
 }
+
+// "Castaño claro" -> "capilar-castano-claro" (nombre del archivo en la galería, como la descarga de la web)
+const nombreArchivo = (color: ColorCarta) =>
+  `capilar-${color.nombre
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '-')}`;
 
 // TP3, API 1 (YouCam): la clienta saca o elige una selfie, elige un color de la carta y ve cómo le quedaría.
 // El back la manda a YouCam y no la guarda. Desde el resultado puede ir a reservar una coloración
@@ -65,10 +78,14 @@ export default function ProbarColor() {
   const [acepta, setAcepta] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [isGoingToBook, setIsGoingToBook] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [resultado, setResultado] = useState<Resultado | null>(null);
   // Corta el doble toque antes de que se dibuje el botón cargando (cada prueba real gasta 1 unit de YouCam)
   const applying = useRef(false);
+  // Al llegar el resultado (queda al final) se baja hasta él
+  const scrollRef = useRef<ScrollView>(null);
+  const bajarAlResultado = useRef(false);
 
   if (!token) return <Redirect href="/" />;
 
@@ -88,7 +105,8 @@ export default function ProbarColor() {
     setError('');
     try {
       const vistaPrevia = await previewHairColorRequest(token, selfie, color.hex, intensidad);
-      setResultado({ ...vistaPrevia, color });
+      bajarAlResultado.current = true;
+      setResultado({ ...vistaPrevia, color, intensidad });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -111,117 +129,152 @@ export default function ProbarColor() {
     }
   };
 
+  // Pedido de Linda: guardar el resultado en la galería. Usa la imagen que ya llegó: no vuelve a llamar a YouCam
+  const save = async () => {
+    if (!resultado) return;
+    setIsSaving(true);
+    try {
+      const result = await saveImageToGallery(resultado.url, nombreArchivo(resultado.color));
+      if (result === 'ok') {
+        showAlert('Foto guardada', 'La encontrás en la galería de tu celular.');
+      } else {
+        showAlert('Sin permiso para guardar', 'Para guardar la foto, permitile a CapiLAR acceder a tus fotos desde los ajustes.', [
+          { text: 'Ahora no', style: 'cancel' },
+          { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
+        ]);
+      }
+    } catch (err) {
+      if (__DEV__) console.warn('[probar-color] guardar', err);
+      // Lo más común: la imagen de YouCam ya venció (dura 2 horas) o no hay conexión
+      showAlert('No se pudo guardar', 'Revisá tu conexión. Si pasaron más de 2 horas, la imagen ya venció: probá el color de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const canApply = Boolean(selfie && color && acepta);
+  // Con el resultado a la vista no hace falta el botón; vuelve si se cambia el color o la intensidad
+  const mostrarAplicar = !resultado || resultado.color.hex !== color?.hex || resultado.intensidad !== intensidad;
 
   return (
-    <Screen scroll edges={['bottom']} style={styles.container}>
-      <Text style={styles.intro}>Subí una selfie, elegí un color de nuestra carta y mirá cómo te quedaría antes de reservar.</Text>
+    <Screen edges={['bottom']} style={styles.screen}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.container}
+        onContentSizeChange={() => {
+          if (!bajarAlResultado.current) return;
+          bajarAlResultado.current = false;
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }}
+      >
+        <View style={styles.aiBanner}>
+          <Ionicons name="sparkles" size={18} color={colors.violet} />
+          <Text style={styles.aiText}>
+            <Text style={styles.aiStrong}>Con inteligencia artificial. </Text>
+            Subí una selfie, elegí un color de nuestra carta y mirá cómo te quedaría antes de reservar.
+          </Text>
+        </View>
 
-      <Step number={1} title="Tu selfie">
-        <View style={styles.selfieRow}>
-          <View style={styles.selfieBox}>
-            {selfie ? (
-              <Image source={{ uri: selfie }} style={styles.fill} contentFit="cover" accessibilityLabel="Tu selfie" />
-            ) : (
-              <Ionicons name="person-outline" size={40} color={colors.greyLight} />
-            )}
+        <Step number={1} title="Tu selfie">
+          <View style={styles.selfieRow}>
+            <View style={styles.selfieBox}>
+              {selfie ? (
+                <Image source={{ uri: selfie }} style={styles.fill} contentFit="cover" accessibilityLabel="Tu selfie" />
+              ) : (
+                <Ionicons name="person-outline" size={40} color={colors.greyLight} />
+              )}
+            </View>
+            <View style={styles.selfieInfo}>
+              <Text style={styles.hint}>De frente, con buena luz y el pelo visible. Mejor sin gorro ni el pelo atado.</Text>
+              <Button variant="secundario" onPress={() => setIsSheetOpen(true)} disabled={isApplying}>
+                {selfie ? 'Cambiar foto' : 'Subir foto'}
+              </Button>
+            </View>
           </View>
-          <View style={styles.selfieInfo}>
-            <Text style={styles.hint}>De frente, con buena luz y el pelo visible. Mejor sin gorro ni el pelo atado.</Text>
-            <Button variant="secundario" onPress={() => setIsSheetOpen(true)} disabled={isApplying}>
-              {selfie ? 'Cambiar foto' : 'Subir foto'}
+        </Step>
+
+        <Step number={2} title="Color">
+          <View style={styles.grid} accessibilityRole="radiogroup">
+            {CARTA_DE_COLORES.map((item) => {
+              const selected = item.hex === color?.hex;
+              return (
+                <View key={item.hex} style={styles.cell}>
+                  <Pressable
+                    onPress={() => setColor(item)}
+                    style={[styles.swatch, selected && styles.swatchSelected]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={item.nombre}
+                  >
+                    <View style={[styles.circle, { backgroundColor: item.hex }]} />
+                    <Text style={[styles.swatchLabel, selected && styles.swatchLabelSelected]} numberOfLines={2}>
+                      {item.nombre}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+
+          <Text style={styles.label}>Intensidad</Text>
+          <View style={styles.row}>
+            {INTENSIDADES.map((item) => (
+              <Chip key={item.value} label={item.label} selected={item.value === intensidad} onPress={() => setIntensidad(item.value)} />
+            ))}
+          </View>
+        </Step>
+
+        <Pressable
+          onPress={() => setAcepta((value) => !value)}
+          style={styles.consent}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: acepta }}
+        >
+          <Ionicons name={acepta ? 'checkbox' : 'square-outline'} size={22} color={colors.violet} />
+          <Text style={styles.consentText}>
+            Acepto que mi foto se envíe a un servicio externo solo para generar la prueba. CapiLAR no la guarda.
+          </Text>
+        </Pressable>
+
+        {error !== '' && <FormMessage message={error} />}
+
+        {mostrarAplicar && (
+          <Button onPress={apply} isLoading={isApplying} disabled={!canApply}>
+            {resultado ? 'Probar este color' : 'Ver cómo me queda'}
+          </Button>
+        )}
+        {isApplying && <Text style={[styles.hint, styles.center]}>La IA está aplicando el color... puede tardar unos segundos.</Text>}
+
+        {resultado && selfie && (
+          <View style={styles.card}>
+            <View style={styles.stepHeader}>
+              <Text style={styles.sectionTitle}>Así te quedaría</Text>
+              {resultado.simulado && <Text style={styles.badge}>Modo prueba</Text>}
+            </View>
+
+            <BeforeAfter
+              antes={selfie}
+              despues={resultado.url}
+              despuesLabel={resultado.color.nombre}
+              despuesColor={resultado.color.hex}
+              accessibilityLabel={`Tu selfie antes y con ${resultado.color.nombre}`}
+            />
+            <Text style={[styles.hint, styles.center]}>Deslizá la barra para comparar el antes y el después.</Text>
+
+            <Text style={styles.hint}>
+              Es una simulación hecha con IA: el resultado real depende de tu cabello. La imagen está disponible por 2 horas (hasta las{' '}
+              {formatHora(resultado.venceEn)}).
+            </Text>
+
+            <Button onPress={bookColoring} isLoading={isGoingToBook}>
+              Reservar coloración
+            </Button>
+            <Button variant="secundario" onPress={save} isLoading={isSaving}>
+              Guardar en la galería
             </Button>
           </View>
-        </View>
-      </Step>
-
-      <Step number={2} title="Color">
-        <View style={styles.grid} accessibilityRole="radiogroup">
-          {CARTA_DE_COLORES.map((item) => {
-            const selected = item.hex === color?.hex;
-            return (
-              <View key={item.hex} style={styles.cell}>
-                <Pressable
-                  onPress={() => setColor(item)}
-                  style={[styles.swatch, selected && styles.swatchSelected]}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={item.nombre}
-                >
-                  <View style={[styles.circle, { backgroundColor: item.hex }]} />
-                  <Text style={[styles.swatchLabel, selected && styles.swatchLabelSelected]} numberOfLines={2}>
-                    {item.nombre}
-                  </Text>
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
-
-        <Text style={styles.label}>Intensidad</Text>
-        <View style={styles.row}>
-          {INTENSIDADES.map((item) => (
-            <Chip key={item.value} label={item.label} selected={item.value === intensidad} onPress={() => setIntensidad(item.value)} />
-          ))}
-        </View>
-      </Step>
-
-      <Pressable
-        onPress={() => setAcepta((value) => !value)}
-        style={styles.consent}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: acepta }}
-      >
-        <Ionicons name={acepta ? 'checkbox' : 'square-outline'} size={22} color={colors.violet} />
-        <Text style={styles.consentText}>
-          Acepto que mi foto se envíe a un servicio externo solo para generar la prueba. CapiLAR no la guarda.
-        </Text>
-      </Pressable>
-
-      {error !== '' && <FormMessage message={error} />}
-
-      <Button onPress={apply} isLoading={isApplying} disabled={!canApply}>
-        Ver cómo me queda
-      </Button>
-      {isApplying && <Text style={[styles.hint, styles.center]}>Aplicando el color... puede tardar unos segundos.</Text>}
-
-      {resultado && selfie && (
-        <View style={styles.card}>
-          <View style={styles.stepHeader}>
-            <Text style={styles.sectionTitle}>Así te quedaría</Text>
-            {resultado.simulado && <Text style={styles.badge}>Modo prueba</Text>}
-          </View>
-
-          <View style={styles.compare}>
-            <View style={styles.figure}>
-              <Image source={{ uri: selfie }} style={styles.photo} contentFit="cover" accessibilityLabel="Tu selfie antes" />
-              <Text style={styles.caption}>Antes</Text>
-            </View>
-            <View style={styles.figure}>
-              <Image
-                source={{ uri: resultado.url }}
-                style={styles.photo}
-                contentFit="cover"
-                transition={200}
-                accessibilityLabel={`Tu selfie con ${resultado.color.nombre}`}
-              />
-              <View style={styles.captionRow}>
-                <View style={[styles.dot, { backgroundColor: resultado.color.hex }]} />
-                <Text style={styles.caption}>{resultado.color.nombre}</Text>
-              </View>
-            </View>
-          </View>
-
-          <Text style={styles.hint}>
-            Es una simulación: el resultado real depende de tu cabello. La imagen está disponible por 2 horas (hasta las{' '}
-            {formatHora(resultado.venceEn)}).
-          </Text>
-
-          <Button onPress={bookColoring} isLoading={isGoingToBook}>
-            Reservar coloración
-          </Button>
-        </View>
-      )}
+        )}
+      </ScrollView>
 
       <OptionsSheet
         visible={isSheetOpen}
@@ -237,15 +290,32 @@ export default function ProbarColor() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    padding: 0,
+  },
   container: {
     gap: spacing.md,
+    padding: spacing.md,
     paddingBottom: spacing.xl,
   },
-  intro: {
+  aiBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  aiText: {
+    flex: 1,
     fontFamily: fonts.body,
-    fontSize: fontSizes.md,
+    fontSize: fontSizes.sm,
     color: colors.grey,
-    lineHeight: 22,
+    lineHeight: 20,
+  },
+  aiStrong: {
+    fontFamily: fonts.bodySemiBold,
+    color: colors.violetText,
   },
   card: {
     gap: spacing.md,
@@ -388,38 +458,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.xs,
     color: colors.warning,
-  },
-  compare: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  figure: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
-  captionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.full,
-  },
-  caption: {
-    textAlign: 'center',
-    fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.xs,
-    color: colors.grey,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
 });

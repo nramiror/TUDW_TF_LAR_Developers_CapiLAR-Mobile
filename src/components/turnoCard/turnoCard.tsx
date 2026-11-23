@@ -1,16 +1,18 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { clientePuedeCancelar, formatFechaLarga, yaTermino } from '@/api/turnos';
+import { formatPrice } from '@/api/services';
+import { clientePuedeCancelar, formatFechaLarga, totalCobrado, yaTermino } from '@/api/turnos';
 import type { EstadoTurno, Turno } from '@/api/turnos';
 import { Button } from '@/components/button/button';
-import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
+import { GradientCard } from '@/components/gradientCard/gradientCard';
+import { colors, fonts, fontSizes, spacing } from '@/theme';
 
 // Cómo ve el cliente cada estado. RECHAZADO se muestra amable, igual que el mail (el motivo no le llega)
 const ESTADO: Record<EstadoTurno, { label: string; color: string }> = {
   PENDIENTE: { label: 'Pendiente de confirmación', color: colors.warning },
   CONFIRMADO: { label: 'Confirmado', color: colors.success },
-  REPROGRAMADO: { label: 'Nuevo horario propuesto', color: colors.violet },
+  REPROGRAMADO: { label: 'Nuevo horario propuesto', color: colors.violetText },
   COMPLETADO: { label: 'Completado', color: colors.grey },
   RECHAZADO: { label: 'No se pudo confirmar', color: colors.error },
   CANCELADO: { label: 'Cancelado', color: colors.grey },
@@ -37,11 +39,8 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false 
   const fueraDePlazo = turno.estado === 'CONFIRMADO' && !puedeCancelar && !yaTermino(turno);
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.badge, { borderColor: estado.color }]}>
-        <Text style={[styles.badgeText, { color: estado.color }]}>{estado.label}</Text>
-      </View>
-
+    // Blanca con el borde degradado de la marca (pedido de Andrea)
+    <GradientCard>
       <Text style={styles.date}>{capitalize(formatFechaLarga(turno.fecha))}</Text>
       <Text style={styles.time}>
         {turno.horaInicio} a {turno.horaFin} h
@@ -51,6 +50,7 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false 
           {detalle.servicio} · {detalle.profesional}
         </Text>
       ))}
+      {totalCobrado(turno) !== null && <Text style={styles.total}>Total {formatPrice(totalCobrado(turno) ?? 0)}</Text>}
 
       {turno.estado === 'CANCELADO' && turno.motivo ? <Text style={styles.note}>Motivo: {turno.motivo}</Text> : null}
       {turno.estado === 'REPROGRAMADO' && (
@@ -64,39 +64,39 @@ export const TurnoCard = ({ turno, onCancel, onAcceptReschedule, isBusy = false 
       )}
       {fueraDePlazo && <Text style={styles.note}>Faltan menos de 12 horas: para cancelarlo, comunicate con el salón.</Text>}
 
-      {turno.estado === 'REPROGRAMADO' && onAcceptReschedule && (
-        <Button onPress={onAcceptReschedule} isLoading={isBusy}>
-          Aceptar nuevo horario
-        </Button>
-      )}
-      {puedeCancelar && onCancel && (
-        <Button variant="grey" onPress={onCancel} disabled={isBusy}>
-          Cancelar turno
-        </Button>
-      )}
-    </View>
+      {/* Abajo: el estado como texto a la izquierda y los botones chicos a la derecha (pedido de Andrea:
+          sin pastilla arriba y con la tarjeta más baja) */}
+      <View style={styles.footer}>
+        <Text style={[styles.estado, { color: estado.color }]}>{estado.label}</Text>
+        <View style={styles.actions}>
+          {puedeCancelar && onCancel && (
+            <Button variant="grey" size="sm" onPress={onCancel} disabled={isBusy}>
+              Cancelar turno
+            </Button>
+          )}
+          {turno.estado === 'REPROGRAMADO' && onAcceptReschedule && (
+            <Button size="sm" onPress={onAcceptReschedule} isLoading={isBusy}>
+              Aceptar horario
+            </Button>
+          )}
+        </View>
+      </View>
+    </GradientCard>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    gap: spacing.xs,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    backgroundColor: colors.white,
-    marginBottom: spacing.xs,
-  },
-  badgeText: {
+  estado: {
+    flexShrink: 1,
     fontFamily: fonts.bodySemiBold,
-    fontSize: fontSizes.xs,
+    fontSize: fontSizes.sm,
   },
   date: {
     fontFamily: fonts.subtitle,
@@ -106,10 +106,15 @@ const styles = StyleSheet.create({
   time: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.md,
-    color: colors.violet,
+    color: colors.violetText,
   },
   detail: {
     fontFamily: fonts.body,
+    fontSize: fontSizes.sm,
+    color: colors.black,
+  },
+  total: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: fontSizes.sm,
     color: colors.black,
   },
@@ -123,6 +128,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: fontSizes.sm,
     color: colors.success,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   note: {
     marginTop: spacing.xs,

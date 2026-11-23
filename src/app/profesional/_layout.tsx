@@ -3,10 +3,11 @@ import { Redirect, Tabs } from 'expo-router';
 
 import { Loader } from '@/components/loader/loader';
 import { useAuth } from '@/context/auth/useAuth';
+import { colors } from '@/theme';
 import { tabScreenOptions } from '@/theme/navigation';
 
-// App del PROFESIONAL: agenda (con las solicitudes pendientes), días y horarios de trabajo y perfil. Más adelante: fichas técnicas con fotos (F08/F09)
-// y escaneo de QR para el stock (F11). La administración (usuarios, servicios) queda en la web.
+// App del PROFESIONAL: agenda (con las solicitudes pendientes y las fichas técnicas), días y horarios de trabajo, stock con escaneo de QR (F11)
+// y perfil. La administración (usuarios, servicios, alta de artículos) queda en la web.
 // Solo entra un usuario logueado con rol PROFESIONAL; si no hay sesión (o se cerró), vuelve a la bienvenida
 export default function ProfesionalLayout() {
   const { user, isCheckingSession } = useAuth();
@@ -14,7 +15,8 @@ export default function ProfesionalLayout() {
   if (user?.rol !== 'PROFESIONAL') return <Redirect href="/" />;
 
   return (
-    <Tabs screenOptions={tabScreenOptions}>
+    // Pestaña elegida en fucsia, el color del profesional (como el panel de la web)
+    <Tabs screenOptions={{ ...tabScreenOptions, tabBarActiveTintColor: colors.fuchsia }}>
       <Tabs.Screen
         name="index"
         options={{
@@ -27,6 +29,13 @@ export default function ProfesionalLayout() {
         options={{
           title: 'Mis horarios',
           tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stock"
+        options={{
+          title: 'Stock',
+          tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" color={color} size={size} />,
         }}
       />
       <Tabs.Screen

@@ -3,14 +3,15 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { API_URL, ApiError } from '@/api/client';
 import { deletePhotoRequest, uploadPhotoRequest, userPhoto, userPhotoPath } from '@/api/users';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
 import type { SheetOption } from '@/components/optionsSheet/optionsSheet';
 import { useAuth } from '@/context/auth/useAuth';
-import { colors, fonts, fontSizes, gradient, radius } from '@/theme';
+import { colors, fonts, fontSizes, gradient, radius, useAccent } from '@/theme';
 import { pickImage } from '@/utils/pickImage';
 import type { ImageSource } from '@/utils/pickImage';
 
@@ -23,11 +24,12 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 };
 
 const showError = (err: unknown) =>
-  Alert.alert('No se pudo cambiar la foto', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+  showAlert('No se pudo cambiar la foto', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
 // Foto de perfil (o las iniciales sobre el degradado si no tiene). Al tocarla: sacar foto, elegir de la galería o quitarla
 export const ProfilePhoto = () => {
   const { user, token, updateUser, renewToken } = useAuth();
+  const { accent } = useAccent();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Si la imagen no carga (por ejemplo, sin conexión) se muestran las iniciales
@@ -67,7 +69,7 @@ export const ProfilePhoto = () => {
   };
 
   const confirmRemove = () =>
-    Alert.alert('Quitar foto', '¿Querés quitar tu foto de perfil?', [
+    showAlert('Quitar foto', '¿Querés quitar tu foto de perfil?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Quitar', style: 'destructive', onPress: () => save(() => deletePhotoRequest(token)) },
     ]);
@@ -104,7 +106,7 @@ export const ProfilePhoto = () => {
             <ActivityIndicator color={colors.white} />
           </View>
         )}
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: accent }]}>
           <Ionicons name="camera" size={16} color={colors.white} />
         </View>
       </Pressable>
@@ -140,7 +142,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: radius.full,
-    backgroundColor: colors.violet,
     borderWidth: 2,
     borderColor: colors.white,
     alignItems: 'center',

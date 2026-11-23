@@ -12,12 +12,12 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://REEMPLAZAR-backend-staging" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://18-218-158-116.sslip.io" }
     },
     "production": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://REEMPLAZAR-backend-produccion" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://18-218-158-116.sslip.io" }
     }
   }
 }

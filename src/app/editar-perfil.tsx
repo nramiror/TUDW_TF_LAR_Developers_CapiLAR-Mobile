@@ -6,6 +6,7 @@ import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { updateProfileRequest } from '@/api/users';
 import type { UpdateProfileData } from '@/api/users';
+import { AlergiasField } from '@/components/alergiasField/alergiasField';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -20,16 +21,21 @@ interface FormValues {
   telefono: string;
   // "DD/MM/AAAA" mientras se edita
   fechaNacimiento: string;
+  // Las de la lista del salón y la "Otra"
+  alergiaIds: number[];
   alergia: string;
 }
 
-type FieldErrors = Partial<Record<keyof FormValues, string>>;
+type FieldErrors = Partial<Record<Exclude<keyof FormValues, 'alergiaIds'>, string>>;
+
+const mismasAlergias = (a: number[], b: number[]) => a.length === b.length && a.every((id) => b.includes(id));
 
 const toFormValues = (user: Usuario): FormValues => ({
   nombre: user.nombre,
   apellido: user.apellido,
   telefono: user.telefono ?? '',
   fechaNacimiento: isoToFecha(user.fechaNacimiento),
+  alergiaIds: (user.cliente?.alergias ?? []).map((alergia) => alergia.id),
   alergia: user.cliente?.alergia ?? '',
 });
 
@@ -53,6 +59,8 @@ const changes = (user: Usuario, values: FormValues): UpdateProfileData => {
   if (values.telefono !== initial.telefono) data.telefono = values.telefono;
   if (values.fechaNacimiento !== initial.fechaNacimiento) data.fechaNacimiento = fechaToIso(values.fechaNacimiento);
   if (user.rol === 'CLIENTE' && values.alergia.trim() !== initial.alergia) data.alergia = values.alergia.trim() || null;
+  // La lista se manda entera (reemplaza la anterior)
+  if (user.rol === 'CLIENTE' && !mismasAlergias(values.alergiaIds, initial.alergiaIds)) data.alergiaIds = values.alergiaIds;
   return data;
 };
 
@@ -67,7 +75,7 @@ export default function EditarPerfil() {
   // Sin sesión (o si se cerró mientras estaba abierta) vuelve a la bienvenida
   if (!user || !token || !values) return <Redirect href="/" />;
 
-  const bind = (name: keyof FormValues) => ({
+  const bind = (name: keyof FieldErrors) => ({
     value: values[name],
     onChangeText: (text: string) =>
       setValues((prev) =>
@@ -130,12 +138,12 @@ export default function EditarPerfil() {
         {...bind('fechaNacimiento')}
       />
       {user.rol === 'CLIENTE' && (
-        <TextField
-          label="Alergias o sensibilidades (opcional)"
-          placeholder="ej. amoníaco"
-          hint="Le sirve a tu estilista para elegir los productos"
-          maxLength={255}
-          {...bind('alergia')}
+        <AlergiasField
+          selected={values.alergiaIds}
+          onChangeSelected={(alergiaIds) => setValues((prev) => prev && { ...prev, alergiaIds })}
+          otra={values.alergia}
+          onChangeOtra={(alergia) => setValues((prev) => prev && { ...prev, alergia })}
+          actuales={user.cliente?.alergias}
         />
       )}
 

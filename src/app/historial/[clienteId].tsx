@@ -9,6 +9,7 @@ import type { Ficha } from '@/api/fichas';
 import { formatFechaLarga } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
+import { SIN_RESULTADOS, useHistorialFiltrado } from '@/components/historialFiltros/historialFiltros';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -27,6 +28,8 @@ export default function HistorialCapilar() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Filtros por servicio, profesional y fecha (como la web)
+  const { filtradas, filtros } = useHistorialFiltrado(fichas, true);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -51,7 +54,7 @@ export default function HistorialCapilar() {
   };
 
   const empty = isLoading ? (
-    <ActivityIndicator color={colors.violet} style={styles.loading} accessibilityLabel="Cargando historial" />
+    <ActivityIndicator color={colors.fuchsia} style={styles.loading} accessibilityLabel="Cargando historial" />
   ) : error ? (
     <View style={styles.gap}>
       <FormMessage message={error} />
@@ -60,15 +63,20 @@ export default function HistorialCapilar() {
       </Button>
     </View>
   ) : (
-    <Text style={styles.hint}>Todavía no tiene fichas técnicas cargadas.</Text>
+    <Text style={styles.hint}>{fichas.length > 0 ? SIN_RESULTADOS : 'Todavía no tiene fichas técnicas cargadas.'}</Text>
   );
 
   return (
     <Screen edges={[]} style={styles.screen}>
       <FlatList
-        data={error ? [] : fichas}
+        data={error ? [] : filtradas}
         keyExtractor={(ficha) => String(ficha.id)}
-        ListHeaderComponent={<Text style={styles.title}>{cliente}</Text>}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.title}>{cliente}</Text>
+            {!error && filtros}
+          </>
+        }
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/ficha-detalle/[fichaId]', params: { fichaId: String(item.id) } })}
@@ -91,7 +99,7 @@ export default function HistorialCapilar() {
         ListEmptyComponent={empty}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.violet]} />}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} colors={[colors.fuchsia]} />}
       />
     </Screen>
   );
@@ -117,7 +125,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.fuchsiaSurface,
   },
   pressed: {
     opacity: 0.7,
