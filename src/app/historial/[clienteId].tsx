@@ -9,6 +9,7 @@ import type { Ficha } from '@/api/fichas';
 import { formatFechaLarga } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
+import { SIN_RESULTADOS, useHistorialFiltrado } from '@/components/historialFiltros/historialFiltros';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -27,6 +28,8 @@ export default function HistorialCapilar() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Filtros por servicio, profesional y fecha (como la web)
+  const { filtradas, filtros } = useHistorialFiltrado(fichas, true);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -60,15 +63,20 @@ export default function HistorialCapilar() {
       </Button>
     </View>
   ) : (
-    <Text style={styles.hint}>Todavía no tiene fichas técnicas cargadas.</Text>
+    <Text style={styles.hint}>{fichas.length > 0 ? SIN_RESULTADOS : 'Todavía no tiene fichas técnicas cargadas.'}</Text>
   );
 
   return (
     <Screen edges={[]} style={styles.screen}>
       <FlatList
-        data={error ? [] : fichas}
+        data={error ? [] : filtradas}
         keyExtractor={(ficha) => String(ficha.id)}
-        ListHeaderComponent={<Text style={styles.title}>{cliente}</Text>}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.title}>{cliente}</Text>
+            {!error && filtros}
+          </>
+        }
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/ficha-detalle/[fichaId]', params: { fichaId: String(item.id) } })}

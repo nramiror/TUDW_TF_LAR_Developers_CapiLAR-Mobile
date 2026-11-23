@@ -8,6 +8,7 @@ import { formatFechaLarga } from '@/api/turnos';
 import { Button } from '@/components/button/button';
 import { FichaFotos } from '@/components/fichaFotos/fichaFotos';
 import { FormMessage } from '@/components/formMessage/formMessage';
+import { SIN_RESULTADOS, useHistorialFiltrado } from '@/components/historialFiltros/historialFiltros';
 import { Screen } from '@/components/screen/screen';
 import { useAuth } from '@/context/auth/useAuth';
 import { colors, fonts, fontSizes, radius, spacing } from '@/theme';
@@ -22,6 +23,8 @@ export default function MisFichas() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  // Filtros por servicio y fecha (como la web)
+  const { filtradas, filtros } = useHistorialFiltrado(fichas);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -54,6 +57,8 @@ export default function MisFichas() {
         Reintentar
       </Button>
     </View>
+  ) : fichas.length > 0 ? (
+    <Text style={styles.hint}>{SIN_RESULTADOS}</Text>
   ) : (
     <Text style={styles.hint}>
       Todavía no tenés fichas. Después de cada servicio vas a ver acá los cuidados que te indicó tu estilista y las fotos de antes y
@@ -64,7 +69,8 @@ export default function MisFichas() {
   return (
     <Screen edges={[]} style={styles.screen}>
       <FlatList
-        data={error ? [] : fichas}
+        data={error ? [] : filtradas}
+        ListHeaderComponent={error ? null : filtros}
         keyExtractor={(ficha) => String(ficha.id)}
         renderItem={({ item }) => (
           <View style={styles.card}>
