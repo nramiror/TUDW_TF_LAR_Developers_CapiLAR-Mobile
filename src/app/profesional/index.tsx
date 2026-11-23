@@ -296,6 +296,8 @@ export default function Agenda() {
         detalleId: String(detalle.id),
         // Vacío si todavía no tiene ficha (la agenda se recarga al volver, así llega la recién creada)
         fichaId: detalle.fichaId ? String(detalle.fichaId) : '',
+        // Para precargar el diagnóstico de su última ficha
+        clienteId: String(turno.cliente.id),
         cliente: `${turno.cliente.nombre} ${turno.cliente.apellido}`,
         alergia: formatAlergias(turno.cliente),
         servicio: detalle.servicio,

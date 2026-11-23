@@ -20,6 +20,8 @@ export const colors = {
   // Estados (alertas, validaciones)
   success: '#16A34A',
   error: '#DC2626',
+  // Fondo rojo suave para destacar alertas (ej. las de la IA en la ficha técnica)
+  errorSurface: '#FEF2F2',
   warning: '#D97706',
 } as const;
 
