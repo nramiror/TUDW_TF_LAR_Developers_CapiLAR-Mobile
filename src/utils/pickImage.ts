@@ -1,9 +1,9 @@
 import { File } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert } from 'react-native';
 
 import { FOTO_MAX_BYTES } from '@/api/users';
+import { showAlert } from '@/components/appAlert/appAlert';
 
 export type ImageSource = 'camera' | 'library';
 
@@ -25,7 +25,7 @@ export const pickImage = async (source: ImageSource, options: ImagePicker.ImageP
   if (source === 'camera') {
     const { granted } = await ImagePicker.requestCameraPermissionsAsync();
     if (!granted) {
-      Alert.alert('Sin permiso de cámara', 'Para sacar fotos, habilitá la cámara para CapiLAR en los ajustes del celular.');
+      showAlert('Sin permiso de cámara', 'Para sacar fotos, habilitá la cámara para CapiLAR en los ajustes del celular.');
       return null;
     }
   }
@@ -38,7 +38,7 @@ export const pickImage = async (source: ImageSource, options: ImagePicker.ImageP
   const asset = result.assets[0];
   const scale = Math.min(1, maxWidth / asset.width, maxHeight / asset.height);
   if (Math.min(asset.width, asset.height) * scale < minSide) {
-    Alert.alert('Foto muy chica', 'Probá con una foto de mejor calidad.');
+    showAlert('Foto muy chica', 'Probá con una foto de mejor calidad.');
     return null;
   }
   const context = ImageManipulator.manipulate(asset.uri);
@@ -46,7 +46,7 @@ export const pickImage = async (source: ImageSource, options: ImagePicker.ImageP
   const image = await (await context.renderAsync()).saveAsync({ compress: 0.7, format: SaveFormat.JPEG });
 
   if ((new File(image.uri).size ?? 0) > FOTO_MAX_BYTES) {
-    Alert.alert('Foto muy pesada', 'Elegí una foto de hasta 2 MB.');
+    showAlert('Foto muy pesada', 'Elegí una foto de hasta 2 MB.');
     return null;
   }
   return image.uri;

@@ -1,12 +1,13 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { getUpcomingWorkDatesRequest } from '@/api/professionals';
 import { formatFechaCorta, formatFechaLarga, getHorariosLibresRequest, rescheduleTurnoRequest, toIsoDate } from '@/api/turnos';
 import type { TurnoItem } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
@@ -117,7 +118,7 @@ export default function Reprogramar() {
     setIsSaving(true);
     try {
       await rescheduleTurnoRequest(token, turnoId, fecha, hora);
-      Alert.alert('Nuevo horario propuesto', `Le avisamos a ${params.cliente} por mail. El turno se confirma cuando lo acepte.`, [
+      showAlert('Nuevo horario propuesto', `Le avisamos a ${params.cliente} por mail. El turno se confirma cuando lo acepte.`, [
         { text: 'Volver a la agenda', onPress: () => router.back() },
       ]);
     } catch (err) {

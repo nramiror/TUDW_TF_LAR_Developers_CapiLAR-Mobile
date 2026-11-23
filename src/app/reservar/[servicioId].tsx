@@ -1,7 +1,7 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { getProfessionalsRequest, getUpcomingWorkDatesRequest } from '@/api/professionals';
@@ -16,6 +16,7 @@ import {
   getHorariosLibresRequest,
   toIsoDate,
 } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { HorarioGrid } from '@/components/horarioGrid/horarioGrid';
@@ -168,7 +169,7 @@ export default function ReservarServicio() {
         turno.estado === 'PENDIENTE'
           ? ['¡Turno solicitado!', 'Te avisamos por mail cuando el salón lo confirme. Lo podés seguir en "Mis turnos".']
           : ['¡Turno confirmado!', 'Te esperamos. Te mandamos los datos por mail y lo podés ver en "Mis turnos".'];
-      Alert.alert(title, message, [{ text: 'Ver mis turnos', onPress: () => router.dismissTo('/cliente/turnos') }]);
+      showAlert(title, message, [{ text: 'Ver mis turnos', onPress: () => router.dismissTo('/cliente/turnos') }]);
     } catch (err) {
       setError(errorMessage(err));
       // 409: alguien tomó ese horario mientras tanto -> se actualiza la lista

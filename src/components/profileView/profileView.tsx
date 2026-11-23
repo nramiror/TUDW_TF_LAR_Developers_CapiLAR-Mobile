@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { formatAlergias } from '@/api/alergias';
 import type { Usuario } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { deleteAccountRequest } from '@/api/users';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ActionGrid } from '@/components/actionTile/actionTile';
 import type { TileAction } from '@/components/actionTile/actionTile';
 import { EmailVerification } from '@/components/emailVerification/emailVerification';
@@ -53,7 +54,7 @@ export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
   if (!user) return null;
 
   const confirmLogout = () =>
-    Alert.alert('Cerrar sesión', '¿Querés cerrar sesión en este celular?', [
+    showAlert('Cerrar sesión', '¿Querés cerrar sesión en este celular?', [
       { text: 'Cancelar', style: 'cancel' },
       // Al borrar la sesión, el layout del rol redirige solo a la bienvenida
       { text: 'Cerrar sesión', style: 'destructive', onPress: () => logout() },
@@ -68,19 +69,19 @@ export const ProfileView = ({ actions = [], children }: ProfileViewProps) => {
       await logout();
     } catch (err) {
       setIsDeleting(false);
-      Alert.alert('No se pudo dar de baja', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+      showAlert('No se pudo dar de baja', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
     }
   };
 
   // Doble confirmación: es una acción que el usuario no puede deshacer desde la app
   const confirmDelete = () =>
-    Alert.alert('Darme de baja', 'Tu cuenta se va a desactivar y no vas a poder volver a entrar con ella.', [
+    showAlert('Darme de baja', 'Tu cuenta se va a desactivar y no vas a poder volver a entrar con ella.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Continuar',
         style: 'destructive',
         onPress: () =>
-          Alert.alert('¿Estás seguro?', 'Para volver a usar CapiLAR vas a tener que comunicarte con el salón.', [
+          showAlert('¿Estás seguro?', 'Para volver a usar CapiLAR vas a tener que comunicarte con el salón.', [
             { text: 'No, volver', style: 'cancel' },
             { text: 'Sí, darme de baja', style: 'destructive', onPress: deleteAccount },
           ]),

@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { AppAlertHost } from '@/components/appAlert/appAlert';
 import { PushNotifications } from '@/components/pushNotifications/pushNotifications';
 import { AuthProvider } from '@/context/auth/authProvider';
 import { colors, fontAssets, fonts, useAccent } from '@/theme';
@@ -27,6 +28,8 @@ export default function RootLayout() {
       {/* F06/F07: registra el token de push y abre los turnos al tocar un aviso (no hace nada en Expo Go) */}
       <PushNotifications />
       <RootStack />
+      {/* Avisos y confirmaciones con la estética de la app (showAlert), encima de todas las pantallas */}
+      <AppAlertHost />
     </AuthProvider>
   );
 }

@@ -3,10 +3,11 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { API_URL, ApiError } from '@/api/client';
 import { deletePhotoRequest, uploadPhotoRequest, userPhoto, userPhotoPath } from '@/api/users';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { OptionsSheet } from '@/components/optionsSheet/optionsSheet';
 import type { SheetOption } from '@/components/optionsSheet/optionsSheet';
 import { useAuth } from '@/context/auth/useAuth';
@@ -23,7 +24,7 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
 };
 
 const showError = (err: unknown) =>
-  Alert.alert('No se pudo cambiar la foto', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
+  showAlert('No se pudo cambiar la foto', err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Probá de nuevo.');
 
 // Foto de perfil (o las iniciales sobre el degradado si no tiene). Al tocarla: sacar foto, elegir de la galería o quitarla
 export const ProfilePhoto = () => {
@@ -68,7 +69,7 @@ export const ProfilePhoto = () => {
   };
 
   const confirmRemove = () =>
-    Alert.alert('Quitar foto', '¿Querés quitar tu foto de perfil?', [
+    showAlert('Quitar foto', '¿Querés quitar tu foto de perfil?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Quitar', style: 'destructive', onPress: () => save(() => deletePhotoRequest(token)) },
     ]);

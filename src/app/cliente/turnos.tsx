@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import {
@@ -11,6 +11,7 @@ import {
   yaTermino,
 } from '@/api/turnos';
 import type { Turno } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
 import { Screen } from '@/components/screen/screen';
@@ -72,7 +73,7 @@ export default function MisTurnos() {
       const updated = await request();
       setTurnos((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
-      Alert.alert(failTitle, errorMessage(err));
+      showAlert(failTitle, errorMessage(err));
       // Puede haber cambiado algo del lado del salón (por ejemplo, ya pasaron las 12 h): se refresca
       load();
     } finally {
@@ -82,7 +83,7 @@ export default function MisTurnos() {
 
   const confirmCancel = (turno: Turno) => {
     if (!token) return;
-    Alert.alert('Cancelar turno', `¿Querés cancelar tu turno del ${formatFechaLarga(turno.fecha)} a las ${turno.horaInicio}?`, [
+    showAlert('Cancelar turno', `¿Querés cancelar tu turno del ${formatFechaLarga(turno.fecha)} a las ${turno.horaInicio}?`, [
       { text: 'No', style: 'cancel' },
       {
         text: 'Sí, cancelar',

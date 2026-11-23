@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import {
   DEPOSITO_LABEL,
@@ -18,6 +18,7 @@ import {
 import type { Articulo, Movimiento } from '@/api/articulos';
 import { ApiError } from '@/api/client';
 import { UNIDAD_LABEL } from '@/api/fichas';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ArticuloCard } from '@/components/articuloCard/articuloCard';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -89,7 +90,7 @@ export default function ArticuloDetalle() {
       setTotal(pag.total);
       setPagina(pag.pagina);
     } catch (err) {
-      Alert.alert('No se pudieron cargar más', errorMessage(err));
+      showAlert('No se pudieron cargar más', errorMessage(err));
     } finally {
       setIsLoadingMore(false);
     }
@@ -119,7 +120,7 @@ export default function ArticuloDetalle() {
       setArticulo(updated ?? { ...articulo, envaseEnUso: null });
       setPesoActual(null);
     } catch (err) {
-      Alert.alert(failTitle, errorMessage(err));
+      showAlert(failTitle, errorMessage(err));
       load();
     } finally {
       setIsBusy(false);
@@ -129,14 +130,14 @@ export default function ArticuloDetalle() {
   const abrirEnvase = () => {
     const abrir = () => runEnvase(() => abrirEnvaseRequest(token, articuloId), 'No se pudo abrir el envase');
     if (!envaseEnUso) return abrir();
-    Alert.alert('Abrir un envase nuevo', `El envase abierto (quedan ${formatPeso(envaseEnUso.pesoActual, envaseEnUso.tipoPeso)}) se da por terminado.`, [
+    showAlert('Abrir un envase nuevo', `El envase abierto (quedan ${formatPeso(envaseEnUso.pesoActual, envaseEnUso.tipoPeso)}) se da por terminado.`, [
       { text: 'Volver', style: 'cancel' },
       { text: 'Abrir nuevo', onPress: abrir },
     ]);
   };
 
   const terminarEnvase = () => {
-    Alert.alert('Terminar el envase', 'El producto queda sin envase abierto. El stock no cambia.', [
+    showAlert('Terminar el envase', 'El producto queda sin envase abierto. El stock no cambia.', [
       { text: 'Volver', style: 'cancel' },
       {
         text: 'Terminar',

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   MAX_COMPROBANTE,
@@ -13,6 +13,7 @@ import {
 } from '@/api/articulos';
 import type { Articulo, TipoMovimientoManual } from '@/api/articulos';
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { Button } from '@/components/button/button';
 import { Chip } from '@/components/chip/chip';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -106,7 +107,7 @@ export default function MovimientoNuevo() {
       });
       if (stockNegativo) {
         // Se permite (puede faltar cargar un ingreso), pero se avisa
-        Alert.alert(
+        showAlert(
           'El stock quedó en negativo',
           `${actualizado.nombre} quedó en ${formatEnvases(actualizado.stock)}. Revisá si falta registrar algún ingreso.`,
           [{ text: 'Entendido', onPress: () => router.back() }],

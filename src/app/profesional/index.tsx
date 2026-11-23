@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { formatAlergias } from '@/api/alergias';
 import { formatEnvases } from '@/api/articulos';
@@ -28,6 +28,7 @@ import {
   yaTermino,
 } from '@/api/turnos';
 import type { CompletarTurnoData, FiltroEstado, Turno } from '@/api/turnos';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { ActionGrid } from '@/components/actionTile/actionTile';
 import { AgendaTurnoCard } from '@/components/agendaTurnoCard/agendaTurnoCard';
 import { Button } from '@/components/button/button';
@@ -232,7 +233,7 @@ export default function Agenda() {
       setPendientes((prev) => prev.filter((item) => item.id !== updated.id || updated.estado === 'PENDIENTE'));
       return true;
     } catch (err) {
-      Alert.alert(failTitle, errorMessage(err));
+      showAlert(failTitle, errorMessage(err));
       // Puede haber cambiado algo (por ejemplo, el cliente canceló mientras tanto): se refresca
       load();
       return false;
@@ -271,7 +272,7 @@ export default function Agenda() {
     setCompletando(null);
     // F11: los insumos de la ficha se descuentan igual aunque no alcance el stock, pero se avisa
     if (sinStock.length > 0) {
-      Alert.alert(
+      showAlert(
         'Stock en negativo',
         `Con lo que usaste quedaron por debajo de 0:\n${sinStock.map((item) => `• ${item.nombre}: ${formatEnvases(item.stock)}`).join('\n')}\n\nRevisá si falta registrar algún ingreso en Stock.`,
       );
@@ -279,7 +280,7 @@ export default function Agenda() {
   };
 
   const marcarAusente = (turno: Turno) => {
-    Alert.alert('Marcar ausente', `¿${turno.cliente.nombre} ${turno.cliente.apellido} no vino al turno?`, [
+    showAlert('Marcar ausente', `¿${turno.cliente.nombre} ${turno.cliente.apellido} no vino al turno?`, [
       { text: 'No', style: 'cancel' },
       { text: 'Sí, no vino', style: 'destructive', onPress: () => run(turno, () => markAbsentRequest(token, turno.id), 'No se pudo marcar') },
     ]);

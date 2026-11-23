@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
+import { showAlert } from '@/components/appAlert/appAlert';
 import { AlergiasField } from '@/components/alergiasField/alergiasField';
 import { Button } from '@/components/button/button';
 import { FormMessage } from '@/components/formMessage/formMessage';
@@ -97,7 +98,7 @@ export default function Registro() {
       });
       // Encuesta del TP4: varias personas no se enteraron de que tenían que verificar el email hasta querer reservar.
       // El aviso es nativo, así que sigue a la vista mientras el layout la lleva a Reservar
-      Alert.alert(
+      showAlert(
         '¡Cuenta creada! Verificá tu email',
         `Te mandamos un enlace a ${email}. Abrilo para poder reservar turnos (revisá también la carpeta de spam). Si no te llega, lo podés reenviar desde Reservar o Mi perfil.`,
         [{ text: 'Entendido' }],
