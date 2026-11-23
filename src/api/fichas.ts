@@ -139,6 +139,66 @@ export const deleteFichaPhotoRequest = (token: string, fichaId: number, fotoId: 
 // URL de una foto (requiere token: se pide con AuthImage)
 export const fichaPhotoPath = (fichaId: number, fotoId: number) => `/fichas/${fichaId}/fotos/${fotoId}`;
 
+// --- F14/F15: sugerencia de la IA (Gemini) y diagnóstico anterior ---
+
+// Diagnóstico de la ficha: los 5 campos que la IA sugiere y que se precargan de la ficha anterior
+export type Diagnostico = Pick<FichaData, 'porosidad' | 'elasticidad' | 'porcentajeCanas' | 'tipoDePelo' | 'volumenDePelo'>;
+
+export interface InsumoSugerido {
+  // Siempre un artículo del stock con existencias: el back completa producto, marca, tono y unidad
+  articuloId: number;
+  producto: string;
+  marca: string;
+  tono: string | null;
+  cantidad: number;
+  unidad: UnidadInsumo;
+}
+
+export interface FormulaSugerida {
+  descripcion?: string;
+  oxidanteVolumen?: number;
+  tiempoPoseMin?: number;
+  insumos: InsumoSugerido[];
+}
+
+export interface SugerenciaIA extends Partial<{ [K in keyof Diagnostico]: NonNullable<Diagnostico[K]> }> {
+  analisis: {
+    evolucion?: string;
+    // F15: lo que hay que tener en cuenta antes de trabajar (alergias, procesos químicos seguidos, daño)
+    alertas: string[];
+    recomendacion?: string;
+  };
+  // Misma forma que las fórmulas de la ficha. Vacía si el servicio no lleva (ej. un corte)
+  formulas: FormulaSugerida[];
+  // true en GEMINI_MODO=simulado: respuesta fija, sin llamar a Gemini
+  simulado: boolean;
+}
+
+export interface DiagnosticoAnterior extends Diagnostico {
+  fichaId: number;
+  // "YYYY-MM-DD" del turno de esa ficha
+  fecha: string;
+  servicio: string;
+}
+
+// El back corta a Gemini a los 30 s (504): se espera un poco más para recibir ese error y no uno de conexión
+const SUGERENCIA_TIMEOUT_MS = 40000;
+
+// Solo el profesional de ese servicio con la ficha abierta. No guarda nada: se revisa y se guarda con PATCH.
+// 400 si no hay foto de ANTES ni fichas anteriores, 429 después de 20 por hora, 502/503/504 si la IA falla
+export const sugerirFichaRequest = (token: string, fichaId: number) =>
+  apiFetch<SugerenciaIA>(`/fichas/${fichaId}/diagnostico`, { method: 'POST', token, timeoutMs: SUGERENCIA_TIMEOUT_MS });
+
+// Sin IA: el diagnóstico de la última ficha cerrada que lo tenga (null si no hay), para arrancar una ficha nueva
+export const getUltimoDiagnosticoRequest = (token: string, clienteId: number) =>
+  apiFetch<{ diagnostico: DiagnosticoAnterior | null }>(`/clientes/${clienteId}/fichas/ultimo-diagnostico`, { token }).then(
+    (res) => res.diagnostico,
+  );
+
+// Si tiene al menos un dato de diagnóstico cargado
+export const tieneDiagnostico = (d: Partial<Diagnostico>) =>
+  d.porosidad != null || d.elasticidad != null || d.porcentajeCanas != null || d.tipoDePelo != null || d.volumenDePelo != null;
+
 // --- Costo de los productos (copiado de la web, src/api/fichas.ts) ---
 
 // Lo que cuesta lo usado de un artículo: la misma cuenta que hace el back al completar el turno
